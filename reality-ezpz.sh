@@ -610,11 +610,18 @@ function build_config {
       exit 1
     fi
   fi
-  if [[ (-n "${args[security]}" || -n "${args[transport]}") && ("${args[security]}" == 'reality' || "${args[transport]}" == 'shadowtls') && ("${config_file[security]}" != 'reality' && "${config_file[transport]}" != 'shadowtls') ]]; then
-    config[domain]="${defaults[domain]}"
-  fi
-  if [[ (-n "${args[security]}" || -n "${args[transport]}") && ("${args[security]}" != 'reality' && "${args[transport]}" != 'shadowtls') && ("${config_file[security]}" == 'reality' || "${config_file[transport]}" == 'shadowtls') ]]; then
-    config[domain]="${config[server]}"
+    if [[ -n "${args[security]}" || -n "${args[transport]}" ]]; then
+    # Если мы ПЕРЕШЛИ к reality/shadowtls (раньше их не было) — сбрасываем SNI на дефолтный домен
+    if [[ ("${config[security]}" == 'reality' || "${config[transport]}" == 'shadowtls') && \
+          ("${config_file[security]}" != 'reality' && "${config_file[transport]}" != 'shadowtls') ]]; then
+      config[domain]="${defaults[domain]}"
+    fi
+
+    # Если мы УШЛИ с reality/shadowtls на обычный TLS — делаем SNI = server
+    if [[ ("${config[security]}" != 'reality' && "${config[transport]}" != 'shadowtls') && \
+          ("${config_file[security]}" == 'reality' || "${config_file[transport]}" == 'shadowtls') ]]; then
+      config[domain]="${config[server]}"
+    fi
   fi
   if [[ -n "${args[server]}" && ("${config[security]}" != 'reality' && "${config[transport]}" != 'shadowtls') ]]; then
     config[domain]="${config[server]}"
