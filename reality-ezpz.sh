@@ -1303,7 +1303,7 @@ EOF
         $([[ ${config[transport]} == 'grpc' ]] && echo '"grpcSettings": {"serviceName": "'"${config[service_path]}"'"},' || true)
         $([[ ${config[transport]} == 'ws' ]] && echo '"wsSettings": {"headers": {"Host": "'"${config[server]}"'"}, "path": "/'"${config[service_path]}"'"},' || true)
         $([[ ${config[transport]} == 'http' ]] && echo '"httpSettings": {"host":["'"${config[server]}"'"], "path": "/'"${config[service_path]}"'"},' || true)
-        $([[ ${config[transport]} == 'xhttp' ]] && echo '"xhttpSettings": {"host": "'"${config[server]}"'", "path": "/'"${config[service_path]}"'", "mode": "packet-up"},' || true)
+        $([[ ${config[transport]} == 'xhttp' ]] && echo '"xhttpSettings": {"host": "'"${config[server]}"'", "path": "/'"${config[service_path]}"'"},' || true)
         "network": "${config[transport]}",
         $(if [[ ${config[security]} == 'reality' ]]; then
           echo "${reality_object}"
