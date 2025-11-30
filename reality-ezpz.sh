@@ -103,12 +103,12 @@ regex[url]="^(http|https)://([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[0-9]{1,3}(\.[0-9]{1,3
 
 function show_help {
   echo ""
-  echo "Usage: reality-ezpz.sh [-t|--transport=tcp|http|grpc|ws|tuic|hysteria2|shadowtls] [-d|--domain=<domain>] [--server=<server>] [--regenerate] [--default]
+  echo "Usage: reality-ezpz.sh [-t|--transport=tcp|http|grpc|ws|xhttp|tuic|hysteria2|shadowtls] [-d|--domain=<domain>] [--server=<server>] [--regenerate] [--default]
   [-r|--restart] [--enable-safenet=true|false] [--port=<port>] [-c|--core=xray|sing-box] [--enable-warp=true|false]
   [--warp-license=<license>] [--security=reality|letsencrypt|selfsigned] [-m|--menu] [--show-server-config] [--add-user=<username>] [--lists-users]
   [--show-user=<username>] [--delete-user=<username>] [--backup] [--restore=<url|file>] [--backup-password=<password>] [-u|--uninstall]"
   echo ""
-  echo "  -t, --transport <tcp|http|grpc|ws|tuic|hysteria2|shadowtls> Transport protocol (tcp, http, grpc, ws, tuic, hysteria2, shadowtls, default: ${defaults[transport]})"
+  echo "  -t, --transport <tcp|http|grpc|ws|xhttp|tuic|hysteria2|shadowtls> Transport protocol (tcp, http, grpc, ws, tuic, hysteria2, shadowtls, default: ${defaults[transport]})"
   echo "  -d, --domain <domain>     Domain to use as SNI (default: ${defaults[domain]})"
   echo "      --server <server>     IP address or domain name of server (Must be a valid domain if using letsencrypt security)"
   echo "      --regenerate          Regenerate public and private keys"
@@ -149,7 +149,7 @@ function parse_args {
       -t|--transport)
         args[transport]="$2"
         case ${args[transport]} in
-          tcp|http|grpc|ws|tuic|hysteria2|shadowtls)
+          tcp|http|grpc|ws|xhttp|tuic|hysteria2|shadowtls)
             shift 2
             ;;
           *)
@@ -589,6 +589,10 @@ function build_config {
   fi
   if [[ ${config[transport]} == 'shadowtls' && ${config[core]} == 'xray' ]]; then
     echo 'You cannot use "shadowtls" transport with "xray" core. Use other transports or change core to sing-box'
+    exit 1
+  fi
+  if [[ ${config[transport]} == 'xhttp' && ${config[core]} == 'sing-box' ]]; then
+    echo 'You cannot use "xhttp" transport with "sing-box" core. Use other transports or change core to xray'
     exit 1
   fi
   if [[ ${config[security]} == 'letsencrypt' && ${config[port]} -ne 443 ]]; then
@@ -1292,10 +1296,11 @@ EOF
         $([[ ${config[transport]} == 'grpc' ]] && echo '"grpcSettings": {"serviceName": "'"${config[service_path]}"'"},' || true)
         $([[ ${config[transport]} == 'ws' ]] && echo '"wsSettings": {"headers": {"Host": "'"${config[server]}"'"}, "path": "/'"${config[service_path]}"'"},' || true)
         $([[ ${config[transport]} == 'http' ]] && echo '"httpSettings": {"host":["'"${config[server]}"'"], "path": "/'"${config[service_path]}"'"},' || true)
+        $([[ ${config[transport]} == 'xhttp' ]] && echo '"xhttpSettings": {"host": "'"${config[server]}"'", "path": "/'"${config[service_path]}"'"},' || true)
         "network": "${config[transport]}",
         $(if [[ ${config[security]} == 'reality' ]]; then
           echo "${reality_object}"
-        elif [[ ${config[transport]} == 'http' || ${config[transport]} == 'tcp' ]]; then
+        elif [[ ${config[transport]} == 'http' || ${config[transport]} == 'tcp' || ${config[transport]} == 'xhttp' ]]; then
           echo "${tls_object}"
         else
           echo '"security":"none"'
@@ -1463,10 +1468,10 @@ function print_client_configuration {
     client_config="${client_config}&type=${config[transport]}"
     client_config="${client_config}&flow=$([[ ${config[transport]} == 'tcp' ]] && echo 'xtls-rprx-vision' || true)"
     client_config="${client_config}&sni=${config[domain]%%:*}"
-    client_config="${client_config}$([[ ${config[transport]} == 'ws' || ${config[transport]} == 'http' ]] && echo "&host=${config[server]}" || true)"
+    client_config="${client_config}$([[ ${config[transport]} == 'ws' || ${config[transport]} == 'http' || ${config[transport]} == 'xhttp' ]] && echo "&host=${config[server]}" || true)"
     client_config="${client_config}$([[ ${config[security]} == 'reality' ]] && echo "&pbk=${config[public_key]}" || true)"
     client_config="${client_config}$([[ ${config[security]} == 'reality' ]] && echo "&sid=${config[short_id]}" || true)"
-    client_config="${client_config}$([[ ${config[transport]} == 'ws' || ${config[transport]} == 'http' ]] && echo "&path=%2F${config[service_path]}" || true)"
+    client_config="${client_config}$([[ ${config[transport]} == 'ws' || ${config[transport]} == 'http' || ${config[transport]} == 'xhttp' ]] && echo "&path=%2F${config[service_path]}" || true)"
     client_config="${client_config}$([[ ${config[transport]} == 'grpc' ]] && echo '&mode=gun' || true)"
     client_config="${client_config}$([[ ${config[transport]} == 'grpc' ]] && echo "&serviceName=${config[service_path]}" || true)"
     client_config="${client_config}#${username}"
@@ -1704,8 +1709,8 @@ Port: ${config[port]}
 ID: ${users[$username]}
 Flow: $([[ ${config[transport]} == 'tcp' ]] && echo 'xtls-rprx-vision' || true)
 Network: ${config[transport]}
-$([[ ${config[transport]} == 'ws' || ${config[transport]} == 'http' ]] && echo "Host Header: ${config[server]}" || true)
-$([[ ${config[transport]} == 'ws' || ${config[transport]} == 'http' ]] && echo "Path: /${config[service_path]}" || true)
+$([[ ${config[transport]} == 'ws' || ${config[transport]} == 'http' || ${config[transport]} == 'xhttp' ]] && echo "Host Header: ${config[server]}" || true)
+$([[ ${config[transport]} == 'ws' || ${config[transport]} == 'http' || ${config[transport]} == 'xhttp' ]] && echo "Path: /${config[service_path]}" || true)
 $([[ ${config[transport]} == 'grpc' ]] && echo 'gRPC mode: gun' || true)
 $([[ ${config[transport]} == 'grpc' ]] && echo 'gRPC serviceName: '"${config[service_path]}" || true)
 TLS: $([[ ${config[security]} == 'reality' ]] && echo 'reality' || echo 'tls')
@@ -1921,6 +1926,10 @@ function config_core_menu {
       message_box 'Invalid Configuration' 'You cannot use "xray" core with "shadowtls" transport. Change core to "sing-box" or use other transports'
       continue
     fi
+    if [[ ${core} == 'sing-box' && ${config[transport]} == 'xhttp' ]]; then
+      message_box 'Invalid Configuration' 'You cannot use "sing-box" core with "xhttp" transport. Change core to "xray" or use other transports'
+      continue
+    fi
     config[core]=$core
     update_config_file
     break
@@ -1961,6 +1970,7 @@ function config_transport_menu {
       "http" "$([[ "${config[transport]}" == 'http' ]] && echo 'on' || echo 'off')" \
       "grpc" "$([[ "${config[transport]}" == 'grpc' ]] && echo 'on' || echo 'off')" \
       "ws" "$([[ "${config[transport]}" == 'ws' ]] && echo 'on' || echo 'off')" \
+      "xhttp" "$([[ "${config[transport]}" == 'xhttp' ]] && echo 'on' || echo 'off')" \
       "tuic" "$([[ "${config[transport]}" == 'tuic' ]] && echo 'on' || echo 'off')" \
       "hysteria2" "$([[ "${config[transport]}" == 'hysteria2' ]] && echo 'on' || echo 'off')" \
       "shadowtls" "$([[ "${config[transport]}" == 'shadowtls' ]] && echo 'on' || echo 'off')" \
@@ -1990,6 +2000,10 @@ function config_transport_menu {
     fi
     if [[ ${transport} == 'shadowtls' && ${config[core]} == 'xray' ]]; then
       message_box 'Invalid Configuration' 'You cannot use "shadowtls" transport with "xray" core. Use other transports or change core to "sing-box"'
+      continue
+    fi
+    if [[ ${transport} == 'xhttp' && ${config[core]} == 'sing-box' ]]; then
+      message_box 'Invalid Configuration' 'You cannot use "xhttp" transport with "sing-box" core. Change core to "xray" or use other transports'
       continue
     fi
     config[transport]=$transport
