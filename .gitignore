@@ -1,0 +1,5 @@
+# Go build artifacts
+tgbot/api/tgbot-api
+tgbot/bot/tgbot-bot
+tgbot/helper/tgbot-helper
+tgbot/subscription/tgbot-subscription
