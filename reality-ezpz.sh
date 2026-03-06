@@ -32,22 +32,26 @@ declare -A image
 config_path="/opt/reality-ezpz"
 compose_project='reality-ezpz'
 tgbot_project='tgbot'
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P || true)"
 BACKTITLE=RealityEZPZ
 MENU="Select an option:"
 HEIGHT=30
 WIDTH=60
 CHOICE_HEIGHT=20
 
-image[xray]="teddysun/xray:latest"
-image[sing-box]="gzxhwq/sing-box:latest"
-image[nginx]="nginx:latest"
-image[certbot]="certbot/certbot:latest"
-image[haproxy]="haproxy:latest"
-image[python]="python:3.13-alpine"
-image[wgcf]="virb3/wgcf:latest"
+image[xray]="ghcr.io/xtls/xray-core:26.2.6@sha256:c6daec5244a2110490ec2049d4c6588cbef544a8bcb4b32c5e4da16e15b7f98e"
+image[nginx]="nginx:1.27-alpine@sha256:62223d644fa234c3a1cc785ee14242ec47a77364226f1c811d2f669f96dc2ac8"
+image[certbot]="certbot/certbot:latest@sha256:850f4e7e1cb2ddb3db57f24fc70480c3787d85a6453917916651c893e0035f3f"
+image[haproxy]="haproxy:3.1-alpine@sha256:14cf88b4e53e7cf2c1c87a5468151ee886199d8d68a876d68349d50325720403"
+image[wgcf]="virb3/wgcf:latest@sha256:725d294dc1048b4345ca4ca106ccad0c2ffbd4abd04ecdfb74910cc48be9c293"
+image[golang]="golang:1.25-alpine@sha256:724e212d86d79b45b7ace725b44ff3b6c2684bfd3131c43d5d60441de151d98e"
+image[alpine]="alpine:3.21@sha256:22e0ec13c0db6b3e1ba3280e831fc50ba7bffe58e81f31670a64b1afede247bc"
 
 defaults[transport]=tcp
-defaults[domain]=www.google.com
+defaults[domain]=rbc.ru
+defaults[fingerprint]=random
+defaults[xhttp_mode]=stream-up
+defaults[fragment]=OFF
 defaults[port]=443
 defaults[safenet]=OFF
 defaults[warp]=OFF
@@ -58,20 +62,35 @@ defaults[warp_id]=""
 defaults[warp_client_id]=""
 defaults[warp_interface_ipv4]=""
 defaults[warp_interface_ipv6]=""
-defaults[core]=sing-box
 defaults[security]=reality
-defaults[server]=$(curl -fsSL --ipv4 https://cloudflare.com/cdn-cgi/trace | grep ip | cut -d '=' -f2)
+defaults[server]=$(curl -fsSL -m 10 --ipv4 https://cloudflare.com/cdn-cgi/trace | grep ip | cut -d '=' -f2)
 defaults[tgbot]=OFF
 defaults[tgbot_token]=""
-defaults[tgbot_admins]=""
+defaults[tgbot_admin_ids]=""
+defaults[api_token]=""
+defaults[helper_token]=""
+defaults[short_ids]=""
+defaults[xray_version_min]="26.2.6"
+defaults[reality_limit_fallback_upload_after_bytes]="1048576"
+defaults[reality_limit_fallback_upload_bytes_per_sec]="32768"
+defaults[reality_limit_fallback_upload_burst_bytes_per_sec]="65536"
+defaults[reality_limit_fallback_download_after_bytes]="1048576"
+defaults[reality_limit_fallback_download_bytes_per_sec]="131072"
+defaults[reality_limit_fallback_download_burst_bytes_per_sec]="262144"
+defaults[xray_experimental]=OFF
+defaults[experimental_user]=""
+defaults[experimental_test_seed]=""
+defaults[reality_mldsa65_seed]=""
+defaults[subscriptions]=OFF
+defaults[subscription_path]=sub
 
 config_items=(
-  "core"
   "security"
   "service_path"
   "public_key"
   "private_key"
   "short_id"
+  "short_ids"
   "transport"
   "domain"
   "server"
@@ -87,7 +106,25 @@ config_items=(
   "warp_interface_ipv6"
   "tgbot"
   "tgbot_token"
-  "tgbot_admins"
+  "tgbot_admin_ids"
+  "api_token"
+  "helper_token"
+  "xray_version_min"
+  "reality_limit_fallback_upload_after_bytes"
+  "reality_limit_fallback_upload_bytes_per_sec"
+  "reality_limit_fallback_upload_burst_bytes_per_sec"
+  "reality_limit_fallback_download_after_bytes"
+  "reality_limit_fallback_download_bytes_per_sec"
+  "reality_limit_fallback_download_burst_bytes_per_sec"
+  "xray_experimental"
+  "experimental_user"
+  "experimental_test_seed"
+  "reality_mldsa65_seed"
+  "fingerprint"
+  "xhttp_mode"
+  "fragment"
+  "subscriptions"
+  "subscription_path"
 )
 
 regex[domain]="^[a-zA-Z0-9]+([-.][a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$"
@@ -96,20 +133,30 @@ regex[warp_license]="^[a-zA-Z0-9]{8}-[a-zA-Z0-9]{8}-[a-zA-Z0-9]{8}$"
 regex[username]="^[a-zA-Z0-9]+$"
 regex[ip]="^([0-9]{1,3}\.){3}[0-9]{1,3}$"
 regex[tgbot_token]="^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$"
-regex[tgbot_admins]="^[a-zA-Z][a-zA-Z0-9_]{4,31}(,[a-zA-Z][a-zA-Z0-9_]{4,31})*$"
+regex[tgbot_admin_ids]="^[0-9]+(,[0-9]+)*$"
+regex[short_ids]="^[0-9a-fA-F,]+$"
+regex[xray_version]="^[0-9]+\\.[0-9]+\\.[0-9]+$"
+regex[number]="^[0-9]+$"
+regex[test_seed]="^[a-zA-Z0-9._:-]{1,128}$"
+regex[mldsa65_seed]="^[a-zA-Z0-9+/=:_-]+$"
+regex[fingerprint]="^(chrome|firefox|safari|ios|android|edge|360|qq|random)$"
+regex[xhttp_mode]="^(stream-up|packet-up)$"
 regex[domain_port]="^[a-zA-Z0-9]+([-.][a-zA-Z0-9]+)*\.[a-zA-Z]{2,}(:[1-9][0-9]*)?$"
 regex[file_path]="^[a-zA-Z0-9_/.-]+$"
 regex[url]="^(http|https)://([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[0-9]{1,3}(\.[0-9]{1,3}){3})(:[0-9]{1,5})?(/.*)?$"
 
 function show_help {
   echo ""
-  echo "Usage: reality-ezpz.sh [-t|--transport=tcp|http|grpc|ws|xhttp|tuic|hysteria2|shadowtls] [-d|--domain=<domain>] [--server=<server>] [--regenerate] [--default]
-  [-r|--restart] [--enable-safenet=true|false] [--port=<port>] [-c|--core=xray|sing-box] [--enable-warp=true|false]
-  [--warp-license=<license>] [--security=reality|letsencrypt|selfsigned] [-m|--menu] [--show-server-config] [--add-user=<username>] [--lists-users]
-  [--show-user=<username>] [--delete-user=<username>] [--backup] [--restore=<url|file>] [--backup-password=<password>] [-u|--uninstall]"
+  echo "Usage: reality-ezpz.sh [-t|--transport=tcp|http|grpc|ws|xhttp] [-d|--domain=<domain>] [--server=<server>] [--regenerate] [--default]
+  [-r|--restart] [--enable-safenet=true|false] [--port=<port>] [--enable-warp=true|false]
+  [--warp-license=<license>] [--security=reality|letsencrypt|selfsigned] [-m|--menu] [--show-server-config] [--add-user=<username>] [--list-users]
+  [--show-user=<username>] [--delete-user=<username>] [--backup] [--backup-upload-temp] [--restore=<url|file>] [--backup-password=<password>] [-u|--uninstall]"
   echo ""
-  echo "  -t, --transport <tcp|http|grpc|ws|xhttp|tuic|hysteria2|shadowtls> Transport protocol (tcp, http, grpc, ws, tuic, hysteria2, shadowtls, default: ${defaults[transport]})"
+  echo "  -t, --transport <tcp|http|grpc|ws|xhttp> Transport protocol (default: ${defaults[transport]}; grpc recommended when tcp is blocked)"
   echo "  -d, --domain <domain>     Domain to use as SNI (default: ${defaults[domain]})"
+  echo "      --fingerprint <fp>    TLS fingerprint: chrome|firefox|safari|ios|android|edge|360|qq|random (default: ${defaults[fingerprint]})"
+  echo "      --xhttp-mode <mode>   XHTTP transport mode: stream-up|packet-up (default: ${defaults[xhttp_mode]})"
+  echo "      --fragment <ON|OFF>   Enable TLS ClientHello fragmentation on outbound (default: ${defaults[fragment]})"
   echo "      --server <server>     IP address or domain name of server (Must be a valid domain if using letsencrypt security)"
   echo "      --regenerate          Regenerate public and private keys"
   echo "      --default             Restore default configuration"
@@ -119,27 +166,37 @@ function show_help {
   echo "      --port <port>         Server port (default: ${defaults[port]})"
   echo "      --enable-warp <true|false> Enable or disable Cloudflare warp"
   echo "      --warp-license <warp-license> Add Cloudflare warp+ license"
-  echo "  -c  --core <sing-box|xray> Select core (xray, sing-box, default: ${defaults[core]})"
+  echo "      --core <xray>         Xray-only mode (for backward compatibility)"
   echo "      --security <reality|letsencrypt|selfsigned> Select type of TLS encryption (reality, letsencrypt, selfsigned, default: ${defaults[security]})" 
   echo "  -m  --menu                Show menu"
   echo "      --enable-tgbot <true|false> Enable Telegram bot for user management"
   echo "      --tgbot-token <token> Token of Telegram bot"
-  echo "      --tgbot-admins <telegram-username> Usernames of telegram bot admins (Comma separated list of usernames without leading '@')"
+  echo "      --tgbot-admin-ids <id[,id...]> Telegram user IDs allowed to manage the bot"
+  echo "      --short-ids <id[,id...]> REALITY short IDs for rotation (hex, even length, max 16 chars each)"
+  echo "      --xray-version-min <x.y.z> Set version.min in generated Xray config"
+  echo "      --xray-experimental <true|false> Enable or disable experimental Xray features"
+  echo "      --experimental-user <username> Username to receive experimental VLESS seed"
+  echo "      --experimental-test-seed <seed> Experimental test seed for selected user"
+  echo "      --reality-mldsa65-seed <seed> Enable REALITY ML-DSA-65 signature seed"
   echo "      --show-server-config  Print server configuration"
   echo "      --add-user <username> Add new user"
   echo "      --list-users          List all users"
   echo "      --show-user <username> Shows the config and QR code of the user"
   echo "      --delete-user <username> Delete the user"
-  echo "      --backup              Backup users and configuration and upload it to temp.sh"
+  echo "      --enable-subscriptions <true|false> Enable subscription links (letsencrypt/selfsigned only)"
+  echo "      --show-subscription <username> Print subscription URL for user"
+  echo "      --rotate-subscription <username> Generate new subscription token for user"
+  echo "      --backup              Create encrypted local backup (.tar.gpg)"
+  echo "      --backup-upload-temp  Upload encrypted backup to temp.sh (explicit opt-in)"
   echo "      --restore <url|file>  Restore backup from URL or file"
-  echo "      --backup-password <password> Create/Restore password protected backup file"
+  echo "      --backup-password <password> Password for backup encryption/decryption"
   echo "  -h, --help                Display this help message"
   return 1
 }
 
 function parse_args {
   local opts
-  opts=$(getopt -o t:d:ruc:mh --long transport:,domain:,server:,regenerate,default,restart,uninstall,enable-safenet:,port:,warp-license:,enable-warp:,core:,security:,menu,show-server-config,add-user:,list-users,show-user:,delete-user:,backup,restore:,backup-password:,enable-tgbot:,tgbot-token:,tgbot-admins:,help -- "$@")
+  opts=$(getopt -o t:d:ruc:mh --long transport:,domain:,server:,regenerate,default,restart,uninstall,enable-safenet:,port:,warp-license:,enable-warp:,core:,security:,menu,show-server-config,add-user:,list-users,show-user:,delete-user:,backup,backup-upload-temp,restore:,backup-password:,enable-tgbot:,tgbot-token:,tgbot-admin-ids:,tgbot-admins:,short-ids:,xray-version-min:,xray-experimental:,experimental-user:,experimental-test-seed:,reality-mldsa65-seed:,fingerprint:,xhttp-mode:,fragment:,enable-subscriptions:,show-subscription:,rotate-subscription:,help -- "$@")
   if [[ $? -ne 0 ]]; then
     return 1
   fi
@@ -149,7 +206,7 @@ function parse_args {
       -t|--transport)
         args[transport]="$2"
         case ${args[transport]} in
-          tcp|http|grpc|ws|xhttp|tuic|hysteria2|shadowtls)
+          tcp|http|grpc|ws|xhttp)
             shift 2
             ;;
           *)
@@ -157,6 +214,26 @@ function parse_args {
             return 1
             ;;
         esac
+        ;;
+      --fingerprint)
+        args[fingerprint]="$2"
+        if ! [[ ${args[fingerprint]} =~ ${regex[fingerprint]} ]]; then
+          echo "Invalid fingerprint: ${args[fingerprint]}. Valid values: chrome|firefox|safari|ios|android|edge|360|qq|random"
+          return 1
+        fi
+        shift 2
+        ;;
+      --xhttp-mode)
+        args[xhttp_mode]="$2"
+        if ! [[ ${args[xhttp_mode]} =~ ${regex[xhttp_mode]} ]]; then
+          echo "Invalid xhttp-mode: ${args[xhttp_mode]}. Valid values: stream-up|packet-up"
+          return 1
+        fi
+        shift 2
+        ;;
+      --fragment)
+        $2 && args[fragment]=ON || args[fragment]=OFF
+        shift 2
         ;;
       -d|--domain)
         args[domain]="$2"
@@ -169,7 +246,7 @@ function parse_args {
       --server)
         args[server]="$2"
         if ! [[ ${args[server]} =~ ${regex[domain]} || ${args[server]} =~ ${regex[ip]} ]]; then
-          echo "Invalid server: ${args[domain]}"
+          echo "Invalid server: ${args[server]}"
           return 1
         fi
         shift 2
@@ -236,11 +313,11 @@ function parse_args {
       -c|--core)
         args[core]="$2"
         case ${args[core]} in
-          xray|sing-box)
+          xray)
             shift 2
             ;;
           *)
-            echo "Invalid core: ${args[core]}"
+            echo "Invalid core: ${args[core]}. This script supports xray only."
             return 1
             ;;
         esac
@@ -285,11 +362,63 @@ function parse_args {
         fi
         shift 2
         ;;
-      --tgbot-admins)
-        args[tgbot_admins]="$2"
-        if [[ ! ${args[tgbot_admins]} =~ ${regex[tgbot_admins]} || $tgbot_admins =~ .+_$ || $tgbot_admins =~ .+_,.+ ]]; then
-          echo "Invalid Telegram Bot Admins Username: ${args[tgbot_admins]}\nThe usernames must separated by ',' without leading '@' character or any extra space."
-         return 1
+      --tgbot-admin-ids|--tgbot-admins)
+        args[tgbot_admin_ids]="$2"
+        if [[ ! ${args[tgbot_admin_ids]} =~ ${regex[tgbot_admin_ids]} ]]; then
+          echo "Invalid Telegram Bot Admin IDs: ${args[tgbot_admin_ids]}"
+          return 1
+        fi
+        shift 2
+        ;;
+      --short-ids)
+        args[short_ids]="$2"
+        if [[ ! ${args[short_ids]} =~ ${regex[short_ids]} ]]; then
+          echo "Invalid short IDs list: ${args[short_ids]}"
+          return 1
+        fi
+        shift 2
+        ;;
+      --xray-version-min)
+        args[xray_version_min]="$2"
+        if [[ ! ${args[xray_version_min]} =~ ${regex[xray_version]} ]]; then
+          echo "Invalid xray version.min: ${args[xray_version_min]}"
+          return 1
+        fi
+        shift 2
+        ;;
+      --xray-experimental)
+        case "$2" in
+          true|false)
+            $2 && args[xray_experimental]=ON || args[xray_experimental]=OFF
+            shift 2
+            ;;
+          *)
+            echo "Invalid xray-experimental option: $2"
+            return 1
+            ;;
+        esac
+        ;;
+      --experimental-user)
+        args[experimental_user]="$2"
+        if ! [[ ${args[experimental_user]} =~ ${regex[username]} ]]; then
+          echo "Invalid experimental username: ${args[experimental_user]}"
+          return 1
+        fi
+        shift 2
+        ;;
+      --experimental-test-seed)
+        args[experimental_test_seed]="$2"
+        if [[ ! ${args[experimental_test_seed]} =~ ${regex[test_seed]} ]]; then
+          echo "Invalid experimental test seed: ${args[experimental_test_seed]}"
+          return 1
+        fi
+        shift 2
+        ;;
+      --reality-mldsa65-seed)
+        args[reality_mldsa65_seed]="$2"
+        if [[ ! ${args[reality_mldsa65_seed]} =~ ${regex[mldsa65_seed]} ]]; then
+          echo "Invalid mldsa65 seed"
+          return 1
         fi
         shift 2
         ;;
@@ -300,7 +429,7 @@ function parse_args {
       --add-user)
         args[add_user]="$2"
         if ! [[ ${args[add_user]} =~ ${regex[username]} ]]; then
-          echo "Invalid username: ${args[add_user]}\nUsername can only contains A-Z, a-z and 0-9"
+          printf 'Invalid username: %s\nUsername can only contain A-Z, a-z and 0-9\n' "${args[add_user]}"
           return 1
         fi
         shift 2
@@ -317,8 +446,40 @@ function parse_args {
         args[delete_user]="$2"
         shift 2
         ;;
+      --enable-subscriptions)
+        case "$2" in
+          true|false)
+            $2 && args[subscriptions]=ON || args[subscriptions]=OFF
+            shift 2
+            ;;
+          *)
+            echo "Invalid enable-subscriptions option: $2"
+            return 1
+            ;;
+        esac
+        ;;
+      --show-subscription)
+        args[show_subscription]="$2"
+        if ! [[ ${args[show_subscription]} =~ ${regex[username]} ]]; then
+          printf 'Invalid username: %s\n' "${args[show_subscription]}"
+          return 1
+        fi
+        shift 2
+        ;;
+      --rotate-subscription)
+        args[rotate_subscription]="$2"
+        if ! [[ ${args[rotate_subscription]} =~ ${regex[username]} ]]; then
+          printf 'Invalid username: %s\n' "${args[rotate_subscription]}"
+          return 1
+        fi
+        shift 2
+        ;;
       --backup)
         args[backup]=true
+        shift
+        ;;
+      --backup-upload-temp)
+        args[backup_upload_temp]=true
         shift
         ;;
       --restore)
@@ -358,94 +519,187 @@ function parse_args {
 
 function backup {
   local backup_name
+  local backup_file
   local backup_password="$1"
+  local upload_temp="${2:-false}"
   local backup_file_url
-  local exit_code
-  backup_name="reality-ezpz-backup-$(date +%Y-%m-%d_%H-%M-%S).zip"
-  cd "${config_path}"
-  if [ -z "${backup_password}" ]; then
-    zip -r "/tmp/${backup_name}" . > /dev/null
-  else
-    zip -P "${backup_password}" -r "/tmp/${backup_name}" . > /dev/null
-  fi
-  if ! backup_file_url=$(curl -fsS -m 30 -F "file=@/tmp/${backup_name}" "https://temp.sh/upload"); then
-    rm -f "/tmp/${backup_name}"
-    echo "Error in uploading backup file" >&2
+  if [[ -z "${backup_password}" ]]; then
+    echo "Backup password is required." >&2
     return 1
   fi
-  rm -f "/tmp/${backup_name}"
-  echo "${backup_file_url}"
+
+  backup_name="reality-ezpz-backup-$(date +%Y-%m-%d_%H-%M-%S).tar.gpg"
+  backup_file="/tmp/${backup_name}"
+  if ! tar -C "${config_path}" -cpf - . | \
+    gpg --batch --yes --pinentry-mode loopback \
+      --passphrase "${backup_password}" \
+      --symmetric --cipher-algo AES256 \
+      --output "${backup_file}"; then
+    rm -f "${backup_file}"
+    echo "Error in creating encrypted backup file" >&2
+    return 1
+  fi
+  chmod 600 "${backup_file}" 2>/dev/null || true
+
+  if [[ "${upload_temp}" == true ]]; then
+    if ! backup_file_url=$(curl -fsS -m 30 -F "file=@${backup_file}" "https://temp.sh/upload"); then
+      rm -f "${backup_file}"
+      echo "Error in uploading backup file" >&2
+      return 1
+    fi
+    rm -f "${backup_file}"
+    echo "${backup_file_url}"
+    return 0
+  fi
+
+  echo "${backup_file}"
+  return 0
 }
 
 function restore {
   local backup_file="$1"
   local backup_password="$2"
+  local encrypted_file
   local temp_file
-  local unzip_output
-  local unzip_exit_code
-  local current_state
-  if [[ ! -r ${backup_file} ]]; then
-    temp_file=$(mktemp -u)
-    if [[ "${backup_file}" =~ ^https?://temp\.sh/ ]]; then
-      if ! curl -fSsL -m 30 -X POST "${backup_file}" -o "${temp_file}"; then
-        echo "Cannot download or find backup file" >&2
-        return 1
-      fi
-    else
-      if ! curl -fSsL -m 30 "${backup_file}" -o "${temp_file}"; then
-        echo "Cannot download or find backup file" >&2
-        return 1
-      fi
-    fi
-    backup_file="${temp_file}"
-  fi
-  current_state=$(set +o)
-  set +e
+  local temp_tar
+  local temp_extract
+  local tar_output
+  local backup_existing=""
+  local backup_dir=""
+  local restore_target
+  local tar_entries
   if [[ -z "${backup_password}" ]]; then
-    unzip_output=$(unzip -P "" -t "${backup_file}" 2>&1)
-  else
-    unzip_output=$(unzip -P "${backup_password}" -t "${backup_file}" 2>&1)
+    echo "Backup password is required." >&2
+    return 1
   fi
-  unzip_exit_code=$?
-  eval "$current_state"
-  if [[ ${unzip_exit_code} -eq 0 ]]; then
-    if ! echo "${unzip_output}" | grep -q 'config'; then
-      echo "The provided file is not a reality-ezpz backup file." >&2
+
+  if [[ ! -r ${backup_file} ]]; then
+    temp_file=$(mktemp)
+    if ! curl -fSsL -m 30 "${backup_file}" -o "${temp_file}"; then
       rm -f "${temp_file}"
+      echo "Cannot download or find backup file" >&2
       return 1
     fi
+    encrypted_file="${temp_file}"
   else
-    if echo "${unzip_output}" | grep -q 'incorrect password'; then
-      echo "The provided password for backup file is incorrect." >&2
-    else
-      echo "An error occurred during zip file verification: ${unzip_output}" >&2
+    encrypted_file="${backup_file}"
+  fi
+
+  temp_tar=$(mktemp)
+  temp_extract=$(mktemp -d)
+  if ! gpg --batch --yes --pinentry-mode loopback \
+    --passphrase "${backup_password}" \
+    --decrypt --output "${temp_tar}" "${encrypted_file}" >/dev/null 2>&1; then
+    if [[ -n "${temp_file}" ]]; then rm -f "${temp_file}"; fi
+    rm -f "${temp_tar}"
+    rm -rf "${temp_extract}"
+    echo "Cannot decrypt backup file. Check password and file integrity." >&2
+    return 1
+  fi
+
+  if ! tar_entries=$(tar -tf "${temp_tar}" 2>/dev/null); then
+    if [[ -n "${temp_file}" ]]; then rm -f "${temp_file}"; fi
+    rm -f "${temp_tar}"
+    rm -rf "${temp_extract}"
+    echo "Backup archive is corrupted." >&2
+    return 1
+  fi
+  while IFS= read -r entry; do
+    [[ -z "${entry}" ]] && continue
+    if [[ "${entry}" == /* || "${entry}" == *"../"* || "${entry}" == ".."* ]]; then
+      if [[ -n "${temp_file}" ]]; then rm -f "${temp_file}"; fi
+      rm -f "${temp_tar}"
+      rm -rf "${temp_extract}"
+      echo "Backup archive contains unsafe paths." >&2
+      return 1
     fi
-    rm -f "${temp_file}"
+  done <<< "${tar_entries}"
+
+  if ! tar_output=$(tar -xf "${temp_tar}" -C "${temp_extract}" 2>&1); then
+    if [[ -n "${temp_file}" ]]; then rm -f "${temp_file}"; fi
+    rm -f "${temp_tar}"
+    rm -rf "${temp_extract}"
+    echo "Error in backup restore: ${tar_output}" >&2
     return 1
   fi
-  rm -rf "${config_path}"
-  mkdir -p "${config_path}"
-  set +e
-  if [[ -z "${backup_password}" ]]; then
-    unzip_output=$(unzip -d "${config_path}" "${backup_file}" 2>&1)
-  else
-    unzip_output=$(unzip -P "${backup_password}" -d "${config_path}" "${backup_file}" 2>&1)
-  fi
-  unzip_exit_code=$?
-  eval "$current_state"
-  if [[ ${unzip_exit_code} -ne 0 ]]; then
-    echo "Error in backup restore: ${unzip_output}" >&2
-    rm -f "${temp_file}"
+  if [[ ! -r "${temp_extract}/config" || ! -r "${temp_extract}/users" || ! -r "${temp_extract}/engine.conf" ]]; then
+    if [[ -n "${temp_file}" ]]; then rm -f "${temp_file}"; fi
+    rm -f "${temp_tar}"
+    rm -rf "${temp_extract}"
+    echo "The provided file is not a reality-ezpz backup file." >&2
     return 1
   fi
-  rm -f "${temp_file}"
-  return
+
+  restore_target="${config_path}.restore.$$.$(date +%s)"
+  if ! mv "${temp_extract}" "${restore_target}"; then
+    if [[ -n "${temp_file}" ]]; then rm -f "${temp_file}"; fi
+    rm -f "${temp_tar}"
+    rm -rf "${temp_extract}"
+    echo "Error in backup restore: cannot stage restored files." >&2
+    return 1
+  fi
+  if [[ -d "${config_path}" ]]; then
+    backup_dir=$(mktemp -d)
+    backup_existing="${backup_dir}/config"
+    if ! mv "${config_path}" "${backup_existing}"; then
+      rm -rf "${restore_target}" "${backup_dir}"
+      if [[ -n "${temp_file}" ]]; then rm -f "${temp_file}"; fi
+      rm -f "${temp_tar}"
+      echo "Error in backup restore: cannot move existing config out of the way." >&2
+      return 1
+    fi
+  fi
+  if ! mv "${restore_target}" "${config_path}"; then
+    rm -rf "${restore_target}"
+    if [[ -n "${backup_existing}" && -d "${backup_existing}" ]]; then
+      mv "${backup_existing}" "${config_path}"
+    fi
+    rm -rf "${backup_dir}"
+    if [[ -n "${temp_file}" ]]; then rm -f "${temp_file}"; fi
+    rm -f "${temp_tar}"
+    echo "Error in backup restore: failed to move restored config into place." >&2
+    return 1
+  fi
+  rm -rf "${backup_existing}" "${backup_dir}"
+  if [[ -n "${temp_file}" ]]; then rm -f "${temp_file}"; fi
+  rm -f "${temp_tar}"
+  secure_file_permissions
+  return 0
 }
 
 function dict_expander {
   local -n dict=$1
   for key in "${!dict[@]}"; do
     echo "${key} ${dict[$key]}"
+  done
+}
+
+function normalize_short_ids_csv {
+  local raw="$1"
+  local sid
+  local clean
+  local -a normalized=()
+  local i
+  IFS=',' read -r -a short_ids_array <<< "${raw}"
+  for sid in "${short_ids_array[@]}"; do
+    clean=$(echo "${sid}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+    if [[ -z "${clean}" ]]; then
+      continue
+    fi
+    if [[ ! "${clean}" =~ ^[0-9a-f]{2,16}$ ]]; then
+      return 1
+    fi
+    if (( ${#clean} % 2 != 0 )); then
+      return 1
+    fi
+    normalized+=("${clean}")
+  done
+  if [[ ${#normalized[@]} -eq 0 ]]; then
+    return 1
+  fi
+  printf '%s' "${normalized[0]}"
+  for ((i=1; i<${#normalized[@]}; i++)); do
+    printf ',%s' "${normalized[$i]}"
   done
 }
 
@@ -460,6 +714,9 @@ function parse_config_file {
     fi
     key=$(echo "$line" | cut -d "=" -f 1)
     value=$(echo "$line" | cut -d "=" -f 2-)
+    if [[ "${key}" == "tgbot_admins" ]]; then
+      key="tgbot_admin_ids"
+    fi
     config_file["${key}"]="${value}"
   done < "${path[config]}"
   if [[ -z "${config_file[public_key]}" || \
@@ -468,13 +725,16 @@ function parse_config_file {
         -z "${config_file[service_path]}" ]]; then
     generate_keys
   fi
+  if [[ -z "${config_file[short_ids]}" ]]; then
+    config_file[short_ids]="${config_file[short_id]}"
+  fi
   return 0
 }
 
 function parse_users_file {
   mkdir -p "$config_path"
   touch "${path[users]}"
-  while read -r line; do
+  while IFS= read -r line; do
     if [[ "${line}" =~ ^\s*# ]] || [[ "${line}" =~ ^\s*$ ]]; then
       continue
     fi
@@ -494,9 +754,9 @@ function parse_users_file {
         echo -e "You cannot delete the only user.\nAt least one user is needed.\nCreate a new user, then delete this one."
         exit 1
       fi
-      unset users["${args[delete_user]}"]
+      unset "users[${args[delete_user]}]"
     else
-      echo "User "${args[delete_user]}" does not exists."
+      echo "User \"${args[delete_user]}\" does not exist."
       exit 1
     fi
   fi
@@ -514,6 +774,7 @@ function restore_defaults {
   local exclude_list=(
     "warp_license"
     "tgbot_token"
+    "tgbot_admin_ids"
   )
   if [[ -n ${config[warp_id]} && -n ${config[warp_token]} ]]; then
     warp_delete_account "${config[warp_id]}" "${config[warp_token]}"
@@ -535,6 +796,8 @@ function restore_defaults {
 
 function build_config {
   local free_80=true
+  local normalized_short_ids
+  local limit_key
   if [[ ${args[regenerate]} == true ]]; then
     generate_keys
   fi
@@ -547,6 +810,55 @@ function build_config {
       config["${item}"]="${defaults[${item}]}"
     fi
   done
+  if [[ -z "${config[short_ids]}" ]]; then
+    config[short_ids]="${config[short_id]}"
+  fi
+  if ! normalized_short_ids=$(normalize_short_ids_csv "${config[short_ids]}"); then
+    echo "Invalid short_ids list. Expected comma separated even-length hex IDs (2..16 chars each)."
+    exit 1
+  fi
+  config[short_ids]="${normalized_short_ids}"
+  if [[ ",${config[short_ids]}," != *",$(echo "${config[short_id]}" | tr '[:upper:]' '[:lower:]'),"* ]]; then
+    config[short_ids]="${config[short_id]},${config[short_ids]}"
+  fi
+  config[short_ids]=$(normalize_short_ids_csv "${config[short_ids]}") || {
+    echo "Invalid merged short_ids list"
+    exit 1
+  }
+  IFS=',' read -r config[short_id] _ <<< "${config[short_ids]}"
+  if [[ ! ${config[xray_version_min]} =~ ${regex[xray_version]} ]]; then
+    echo "Invalid xray_version_min: ${config[xray_version_min]}"
+    exit 1
+  fi
+  for limit_key in \
+    reality_limit_fallback_upload_after_bytes \
+    reality_limit_fallback_upload_bytes_per_sec \
+    reality_limit_fallback_upload_burst_bytes_per_sec \
+    reality_limit_fallback_download_after_bytes \
+    reality_limit_fallback_download_bytes_per_sec \
+    reality_limit_fallback_download_burst_bytes_per_sec; do
+    if [[ ! ${config[${limit_key}]} =~ ${regex[number]} ]]; then
+      echo "Invalid numeric value for ${limit_key}: ${config[${limit_key}]}"
+      exit 1
+    fi
+  done
+  if [[ ${config[xray_experimental]} != 'ON' && ${config[xray_experimental]} != 'OFF' ]]; then
+    echo "Invalid xray_experimental value: ${config[xray_experimental]}"
+    exit 1
+  fi
+  if [[ -n ${config[experimental_user]} && ! ${config[experimental_user]} =~ ${regex[username]} ]]; then
+    echo "Invalid experimental_user: ${config[experimental_user]}"
+    exit 1
+  fi
+  if [[ -n ${config[experimental_test_seed]} && ! ${config[experimental_test_seed]} =~ ${regex[test_seed]} ]]; then
+    echo "Invalid experimental_test_seed"
+    exit 1
+  fi
+  if [[ -n ${config[reality_mldsa65_seed]} && ! ${config[reality_mldsa65_seed]} =~ ${regex[mldsa65_seed]} ]]; then
+    echo "Invalid reality_mldsa65_seed"
+    exit 1
+  fi
+  config[core]='xray'
   if [[ ${args[default]} == true ]]; then
     restore_defaults
     return 0
@@ -555,12 +867,8 @@ function build_config {
     echo 'To enable Telegram bot, you have to give the token of bot with --tgbot-token option.'
     exit 1
   fi
-  if [[ ${config[tgbot]} == 'ON' && -z ${config[tgbot_admins]} ]]; then
-    echo 'To enable Telegram bot, you have to give the list of authorized Telegram admins username with --tgbot-admins option.'
-    exit 1
-  fi
-  if [[ ${config[warp]} == 'ON' && -z ${config[warp_license]} ]]; then
-    echo 'To enable WARP+, you have to give WARP+ license with --warp-license option.'
+  if [[ ${config[tgbot]} == 'ON' && -z ${config[tgbot_admin_ids]} ]]; then
+    echo 'To enable Telegram bot, you have to give Telegram admin IDs with --tgbot-admin-ids option.'
     exit 1
   fi
   if [[ ! ${config[server]} =~ ${regex[domain]} && ${config[security]} == 'letsencrypt' ]]; then
@@ -571,28 +879,8 @@ function build_config {
     echo 'You cannot use "ws" transport with "reality" TLS certificate. Use other transports or change TLS certifcate to letsencrypt or selfsigned'
     exit 1
   fi
-  if [[ ${config[transport]} == 'tuic' && ${config[security]} == 'reality' ]]; then
-    echo 'You cannot use "tuic" transport with "reality" TLS certificate. Use other transports or change TLS certifcate to letsencrypt or selfsigned'
-    exit 1
-  fi
-  if [[ ${config[transport]} == 'tuic' && ${config[core]} == 'xray' ]]; then
-    echo 'You cannot use "tuic" transport with "xray" core. Use other transports or change core to sing-box'
-    exit 1
-  fi
-  if [[ ${config[transport]} == 'hysteria2' && ${config[security]} == 'reality' ]]; then
-    echo 'You cannot use "hysteria2" transport with "reality" TLS certificate. Use other transports or change TLS certifcate to letsencrypt or selfsigned'
-    exit 1
-  fi
-  if [[ ${config[transport]} == 'hysteria2' && ${config[core]} == 'xray' ]]; then
-    echo 'You cannot use "hysteria2" transport with "xray" core. Use other transports or change core to sing-box'
-    exit 1
-  fi
-  if [[ ${config[transport]} == 'shadowtls' && ${config[core]} == 'xray' ]]; then
-    echo 'You cannot use "shadowtls" transport with "xray" core. Use other transports or change core to sing-box'
-    exit 1
-  fi
-  if [[ ${config[transport]} == 'xhttp' && ${config[core]} == 'sing-box' ]]; then
-    echo 'You cannot use "xhttp" transport with "sing-box" core. Use other transports or change core to xray'
+  if [[ ${config[subscriptions]} == 'ON' && ${config[security]} == 'reality' ]]; then
+    echo 'Subscription links are not available with "reality" security. Use letsencrypt or selfsigned security, or disable subscriptions with --enable-subscriptions false'
     exit 1
   fi
   if [[ ${config[security]} == 'letsencrypt' && ${config[port]} -ne 443 ]]; then
@@ -610,21 +898,22 @@ function build_config {
       exit 1
     fi
   fi
-    if [[ -n "${args[security]}" || -n "${args[transport]}" ]]; then
-    # Если мы ПЕРЕШЛИ к reality/shadowtls (раньше их не было) — сбрасываем SNI на дефолтный домен
-    if [[ ("${config[security]}" == 'reality' || "${config[transport]}" == 'shadowtls') && \
-          ("${config_file[security]}" != 'reality' && "${config_file[transport]}" != 'shadowtls') ]]; then
+  if [[ -n "${args[security]}" ]]; then
+    if [[ "${config[security]}" == 'reality' && "${config_file[security]}" != 'reality' ]]; then
       config[domain]="${defaults[domain]}"
     fi
-
-    # Если мы УШЛИ с reality/shadowtls на обычный TLS — делаем SNI = server
-    if [[ ("${config[security]}" != 'reality' && "${config[transport]}" != 'shadowtls') && \
-          ("${config_file[security]}" == 'reality' || "${config_file[transport]}" == 'shadowtls') ]]; then
+    if [[ "${config[security]}" != 'reality' && "${config_file[security]}" == 'reality' ]]; then
       config[domain]="${config[server]}"
     fi
   fi
-  if [[ -n "${args[server]}" && ("${config[security]}" != 'reality' && "${config[transport]}" != 'shadowtls') ]]; then
+  if [[ -n "${args[server]}" && "${config[security]}" != 'reality' ]]; then
     config[domain]="${config[server]}"
+  fi
+  if [[ -z ${config[api_token]} ]]; then
+    config[api_token]=$(openssl rand -hex 24)
+  fi
+  if [[ ${config[tgbot]} == 'ON' && -z ${config[helper_token]} ]]; then
+    config[helper_token]=$(openssl rand -hex 24)
   fi
   if [[ -n "${args[warp]}" && "${args[warp]}" == 'OFF' && "${config_file[warp]}" == 'ON' ]]; then
     if [[ -n ${config[warp_id]} && -n ${config[warp_token]} ]]; then
@@ -640,10 +929,12 @@ function build_config {
                                          -z ${config[warp_interface_ipv6]} ) ]]; }; then
     config[warp]='OFF'
     warp_create_account || exit 1
-    warp_add_license "${config[warp_id]}" "${config[warp_token]}" "${config[warp_license]}" || exit 1
+    if [[ -n ${config[warp_license]} ]]; then
+      warp_add_license "${config[warp_id]}" "${config[warp_token]}" "${config[warp_license]}" || exit 1
+    fi
     config[warp]='ON'
   fi
-  if [[ -n ${args[warp_license]} && -n ${config_file[warp_license]} && "${args[warp_license]}" != "${config_file[warp_license]}" ]]; then
+  if [[ -n ${args[warp_license]} && "${args[warp_license]}" != "${config_file[warp_license]}" ]]; then
     if ! warp_add_license "${config[warp_id]}" "${config[warp_token]}" "${args[warp_license]}"; then
       config[warp]='OFF'
       config[warp_license]=""
@@ -663,6 +954,7 @@ function update_config_file {
       echo "${item}=${config[${item}]}" >> "${path[config]}"
     fi
   done
+  secure_file_permissions
   check_reload
 }
 
@@ -671,15 +963,20 @@ function update_users_file {
   for user in "${!users[@]}"; do
     echo "${user}=${users[${user}]}" >> "${path[users]}"
   done
+  if [[ ${config[subscriptions]} == 'ON' ]]; then
+    sync_subscriptions_file || true
+  fi
+  secure_file_permissions
   check_reload
 }
 
 function generate_keys {
   local key_pair
-  key_pair=$(docker run --rm ${image[xray]} xray x25519)
+  key_pair=$(docker run --rm "${image[xray]}" xray x25519)
   config_file[public_key]=$(echo "${key_pair}" | grep 'Public key:' | awk '{print $3}')
   config_file[private_key]=$(echo "${key_pair}" | grep 'Private key:' | awk '{print $3}')
   config_file[short_id]=$(openssl rand -hex 8)
+  config_file[short_ids]="${config_file[short_id]},$(openssl rand -hex 8),$(openssl rand -hex 8)"
   config_file[service_path]=$(openssl rand -hex 4)
 }
 
@@ -702,16 +999,16 @@ function install_packages {
   if [[ -n $BOT_TOKEN ]]; then 
     return 0
   fi
-  if ! which qrencode whiptail jq xxd zip unzip >/dev/null 2>&1; then
+  if ! which qrencode whiptail jq xxd gpg >/dev/null 2>&1; then
     if which apt >/dev/null 2>&1; then
       apt update
-      DEBIAN_FRONTEND=noninteractive apt install qrencode whiptail jq xxd zip unzip -y
+      DEBIAN_FRONTEND=noninteractive apt install qrencode whiptail jq xxd gnupg tar -y
       return 0
     fi
     if which yum >/dev/null 2>&1; then
       yum makecache
       yum install epel-release -y || true
-      yum install qrencode newt jq vim-common zip unzip -y
+      yum install qrencode newt jq vim-common gnupg2 tar -y
       return 0
     fi
     echo "OS is not supported!"
@@ -734,7 +1031,7 @@ function install_docker {
     docker_cmd="docker-compose"
     return 0
   fi
-  curl -fsSL -m 30 https://github.com/docker/compose/releases/download/v2.28.0/docker-compose-linux-$(uname -m) -o /usr/local/bin/docker-compose
+  curl -fsSL -m 30 "https://github.com/docker/compose/releases/download/v2.28.0/docker-compose-linux-$(uname -m)" -o /usr/local/bin/docker-compose
   chmod +x /usr/local/bin/docker-compose
   docker_cmd="docker-compose"
   return 0
@@ -752,24 +1049,21 @@ networks:
       - subnet: fc11::1:0/112
 services:
   engine:
-    image: ${image[${config[core]}]}
-    $([[ ${config[security]} == 'reality' || ${config[transport]} == 'shadowtls' ]] && echo "ports:" || true)
-    $([[ (${config[security]} == 'reality' || ${config[transport]} == 'shadowtls') && ${config[port]} -eq 443 ]] && echo '- 80:8080' || true)
-    $([[ ${config[security]} == 'reality' || ${config[transport]} == 'shadowtls' ]] && echo "- ${config[port]}:8443" || true)
-    $([[ ${config[transport]} == 'tuic' || ${config[transport]} == 'hysteria2' ]] && echo "ports:" || true)
-    $([[ ${config[transport]} == 'tuic' || ${config[transport]} == 'hysteria2' ]] && echo "- ${config[port]}:8443/udp" || true)
-    $([[ ${config[security]} != 'reality' && ${config[transport]} != 'shadowtls' ]] && echo "expose:" || true)
-    $([[ ${config[security]} != 'reality' && ${config[transport]} != 'shadowtls' ]] && echo "- 8443" || true)
+    image: ${image[xray]}
+    $([[ ${config[security]} == 'reality' ]] && echo "ports:" || echo "expose:")
+    $([[ ${config[security]} == 'reality' && ${config[port]} -eq 443 ]] && echo '- 80:8080' || true)
+    $([[ ${config[security]} == 'reality' ]] && echo "- ${config[port]}:8443" || true)
+    $([[ ${config[security]} != 'reality' ]] && echo "- 8443" || true)
     restart: always
     environment:
       TZ: Etc/UTC
     volumes:
-    - ./${path[engine]#${config_path}/}:/etc/${config[core]}/config.json
-    $([[ ${config[security]} != 'reality' ]] && { [[ ${config[transport]} == 'http' ]] || [[ ${config[transport]} == 'tcp' ]] || [[ ${config[transport]} == 'tuic' ]] || [[ ${config[transport]} == 'hysteria2' ]]; } && echo "- ./${path[server_crt]#${config_path}/}:/etc/${config[core]}/server.crt" || true)
-    $([[ ${config[security]} != 'reality' ]] && { [[ ${config[transport]} == 'http' ]] || [[ ${config[transport]} == 'tcp' ]] || [[ ${config[transport]} == 'tuic' ]] || [[ ${config[transport]} == 'hysteria2' ]]; } && echo "- ./${path[server_key]#${config_path}/}:/etc/${config[core]}/server.key" || true)
+    - ./${path[engine]#${config_path}/}:/etc/xray/config.json
+    $([[ ${config[security]} != 'reality' ]] && { [[ ${config[transport]} == 'http' ]] || [[ ${config[transport]} == 'tcp' ]] || [[ ${config[transport]} == 'xhttp' ]]; } && echo "- ./${path[server_crt]#${config_path}/}:/etc/xray/server.crt" || true)
+    $([[ ${config[security]} != 'reality' ]] && { [[ ${config[transport]} == 'http' ]] || [[ ${config[transport]} == 'tcp' ]] || [[ ${config[transport]} == 'xhttp' ]]; } && echo "- ./${path[server_key]#${config_path}/}:/etc/xray/server.key" || true)
     networks:
     - reality
-$(if [[ ${config[security]} != 'reality' && ${config[transport]} != 'shadowtls' ]]; then
+$(if [[ ${config[security]} != 'reality' ]]; then
 echo "
   nginx:
     image: ${image[nginx]}
@@ -792,7 +1086,7 @@ echo "
     networks:
     - reality"
 fi)
-$(if [[ ${config[security]} == 'letsencrypt' && ${config[transport]} != 'shadowtls' ]]; then
+$(if [[ ${config[security]} == 'letsencrypt' ]]; then
 echo "
   certbot:
     build:
@@ -812,6 +1106,21 @@ echo "
     entrypoint: /bin/sh
     command: /startup.sh"
 fi)
+$(if [[ ${config[subscriptions]} == 'ON' && ${config[security]} != 'reality' ]]; then
+echo "
+  subscription-api:
+    build:
+      context: ./subscription-api
+    expose:
+    - 8081
+    restart: always
+    environment:
+      CONFIG_PATH: /opt/reality-ezpz
+    volumes:
+    - ../:/opt/reality-ezpz:ro
+    networks:
+    - reality"
+fi)
 EOF
 }
 
@@ -819,25 +1128,58 @@ function generate_tgbot_compose {
   cat >"${path[tgbot_compose]}" <<EOF
 version: "3"
 networks:
-  tgbot:
+  tgbot_internal:
     driver: bridge
-    enable_ipv6: true
-    ipam:
-      config:
-      - subnet: fc11::2:0/112
+    internal: true
+  tgbot_egress:
+    driver: bridge
 services:
+  vpn-helper:
+    build:
+      context: ./helper
+    restart: always
+    environment:
+      HELPER_LISTEN: ":8090"
+      HELPER_TOKEN: ${config[helper_token]}
+      COMPOSE_PROJECT: ${compose_project}
+      COMPOSE_DIR: ${config_path}
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - ../:${config_path}:ro
+    networks:
+    - tgbot_internal
+  vpn-api:
+    build:
+      context: ./api
+    restart: always
+    environment:
+      API_LISTEN: ":8080"
+      API_TOKEN: ${config[api_token]}
+      HELPER_URL: http://vpn-helper:8090
+      HELPER_TOKEN: ${config[helper_token]}
+      CONFIG_PATH: ${config_path}
+      COMPOSE_PROJECT: ${compose_project}
+      COMPOSE_DIR: ${config_path}
+    volumes:
+    - ../:${config_path}
+    depends_on:
+    - vpn-helper
+    networks:
+    - tgbot_internal
   tgbot:
-    build: ./
+    build:
+      context: ./bot
     restart: always
     environment:
       BOT_TOKEN: ${config[tgbot_token]}
-      BOT_ADMIN: ${config[tgbot_admins]}
-    volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
-    - ../:${config_path}
-    - /etc/docker/:/etc/docker/
+      BOT_ADMIN_IDS: ${config[tgbot_admin_ids]}
+      VPN_API_URL: http://vpn-api:8080
+      VPN_API_TOKEN: ${config[api_token]}
+    depends_on:
+    - vpn-api
     networks:
-    - tgbot
+    - tgbot_internal
+    - tgbot_egress
 EOF
 }
 
@@ -869,19 +1211,22 @@ $(if [[ ${config[transport]} != 'tcp' ]]; then echo "
   bind :::8443 v4v6 ssl crt /usr/local/etc/haproxy/server.pem alpn h2,http/1.1
   mode http
   http-request set-header Host ${config[server]}
+$(if [[ ${config[subscriptions]} == 'ON' ]]; then echo "
+  stick-table type ip size 100k expire 1m store http_req_rate(60s)
+  http-request track-sc0 src if { path_beg /${config[subscription_path]}/ }
+  http-request deny status 429 if { path_beg /${config[subscription_path]}/ } { sc_http_req_rate(0) gt 30 }
+  use_backend subscription_api if { path_beg /${config[subscription_path]}/ }
+"; fi)
 $(if [[ ${config[security]} == 'letsencrypt' ]]; then echo "
   use_backend certbot if { path_beg /.well-known/acme-challenge }
 "; fi)
-$(if [[ ${config[transport]} != 'tuic' && ${config[transport]} != 'hysteria2' ]]; then echo "
   use_backend engine if { path_beg /${config[service_path]} }
-"; fi)
   use_backend default
 "; else echo "
   bind :::8443 v4v6
   mode tcp
   use_backend engine
 "; fi)
-$(if [[ ${config[transport]} != 'tuic' && ${config[transport]} != 'hysteria2' ]]; then echo "
 backend engine
   retry-on conn-failure empty-response response-timeout
 $(if [[ ${config[transport]} != 'tcp' ]]; then echo "
@@ -891,18 +1236,20 @@ $(if [[ ${config[transport]} != 'tcp' ]]; then echo "
 "; fi)
 $(if [[ ${config[transport]} == 'grpc' ]]; then echo "
   server engine engine:8443 check tfo proto h2
-"; elif [[ ${config[transport]} == 'http' && ${config[core]} == 'sing-box' ]]; then echo "
-  server engine engine:8443 check tfo proto h2 ssl verify none
-"; elif [[ ${config[transport]} == 'http' && ${config[core]} != 'sing-box' ]]; then echo "
+"; elif [[ ${config[transport]} == 'http' || ${config[transport]} == 'xhttp' ]]; then echo "
   server engine engine:8443 check tfo ssl verify none
 "; else echo "
   server engine engine:8443 check tfo
-"; fi)
 "; fi)
 $(if [[ ${config[security]} == 'letsencrypt' ]]; then echo "
 backend certbot
   mode http
   server certbot certbot:80
+"; fi)
+$(if [[ ${config[subscriptions]} == 'ON' && ${config[transport]} != 'tcp' ]]; then echo "
+backend subscription_api
+  mode http
+  server subscription-api subscription-api:8081 check
 "; fi)
 backend default
   mode http
@@ -978,18 +1325,243 @@ RUN apk add --no-cache docker-cli-compose curl uuidgen
 EOF
 }
 
-function generate_tgbot_dockerfile {
-  cat >"${path[tgbot_dockerfile]}" << EOF
-FROM ${image[python]}
-WORKDIR ${config_path}/tgbot
-RUN apk add --no-cache docker-cli-compose curl bash newt libqrencode-tools sudo openssl jq zip unzip
-RUN pip install --no-cache-dir python-telegram-bot[callback-data]==22.0 qrcode[pil]==8.1
-CMD [ "python", "./tgbot.py" ]
+function generate_tgbot_api_dockerfile {
+  cat >"${path[tgbot_api_dockerfile]}" << EOF
+FROM ${image[golang]} AS build
+WORKDIR /src
+COPY go.mod ./
+RUN go mod download
+COPY main.go ./
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=\$(go env GOARCH) go build -trimpath -ldflags="-s -w" -o /out/vpn-api .
+
+FROM ${image[alpine]}
+RUN apk add --no-cache ca-certificates
+COPY --from=build /out/vpn-api /usr/local/bin/vpn-api
+ENTRYPOINT ["/usr/local/bin/vpn-api"]
 EOF
 }
 
-function download_tgbot_script {
-  curl -fsSL -m 3 https://raw.githubusercontent.com/WhoYa/reality-ezpz/master/tgbot.py -o "${path[tgbot_script]}"
+function generate_tgbot_bot_dockerfile {
+  cat >"${path[tgbot_bot_dockerfile]}" << EOF
+FROM ${image[golang]} AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY main.go ./
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=\$(go env GOARCH) go build -trimpath -ldflags="-s -w" -o /out/tgbot .
+
+FROM ${image[alpine]}
+RUN apk add --no-cache ca-certificates
+COPY --from=build /out/tgbot /usr/local/bin/tgbot
+ENTRYPOINT ["/usr/local/bin/tgbot"]
+EOF
+}
+
+function generate_tgbot_helper_dockerfile {
+  cat >"${path[tgbot_helper_dockerfile]}" << EOF
+FROM ${image[golang]} AS build
+WORKDIR /src
+COPY go.mod ./
+RUN go mod download
+COPY main.go ./
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=\$(go env GOARCH) go build -trimpath -ldflags="-s -w" -o /out/vpn-helper .
+
+FROM ${image[alpine]}
+RUN apk add --no-cache ca-certificates docker-cli-compose
+COPY --from=build /out/vpn-helper /usr/local/bin/vpn-helper
+ENTRYPOINT ["/usr/local/bin/vpn-helper"]
+EOF
+}
+
+function sync_tgbot_sources {
+  local source_root
+  source_root="${script_dir}/tgbot"
+  if [[ ! -r "${source_root}/api/main.go"    || \
+        ! -r "${source_root}/api/go.mod"      || \
+        ! -r "${source_root}/bot/main.go"     || \
+        ! -r "${source_root}/bot/go.mod"      || \
+        ! -r "${source_root}/bot/go.sum"      || \
+        ! -r "${source_root}/helper/main.go"  || \
+        ! -r "${source_root}/helper/go.mod"   ]]; then
+    if [[ -r "${path[tgbot_api_main]}"    && -r "${path[tgbot_api_gomod]}"  && \
+          -r "${path[tgbot_bot_main]}"    && -r "${path[tgbot_bot_gomod]}"  && \
+          -r "${path[tgbot_bot_gosum]}"   && -r "${path[tgbot_helper_main]}" && \
+          -r "${path[tgbot_helper_gomod]}" ]]; then
+      return 0
+    fi
+    echo "Cannot find local tgbot sources in ${source_root}. Run this script from a checked-out repository." >&2
+    return 1
+  fi
+  cp "${source_root}/api/main.go"    "${path[tgbot_api_main]}"
+  cp "${source_root}/api/go.mod"     "${path[tgbot_api_gomod]}"
+  cp "${source_root}/bot/main.go"    "${path[tgbot_bot_main]}"
+  cp "${source_root}/bot/go.mod"     "${path[tgbot_bot_gomod]}"
+  cp "${source_root}/bot/go.sum"     "${path[tgbot_bot_gosum]}"
+  cp "${source_root}/helper/main.go" "${path[tgbot_helper_main]}"
+  cp "${source_root}/helper/go.mod"  "${path[tgbot_helper_gomod]}"
+}
+
+function sync_subscription_api_sources {
+  local source_root
+  source_root="${script_dir}/tgbot/subscription"
+  if [[ ! -r "${source_root}/main.go" || ! -r "${source_root}/go.mod" ]]; then
+    if [[ -r "${path[subscription_api_main]}" && -r "${path[subscription_api_gomod]}" ]]; then
+      return 0
+    fi
+    echo "Cannot find subscription-api sources in ${source_root}. Run this script from a checked-out repository." >&2
+    return 1
+  fi
+  mkdir -p "$(dirname "${path[subscription_api_main]}")"
+  cp "${source_root}/main.go" "${path[subscription_api_main]}"
+  cp "${source_root}/go.mod"  "${path[subscription_api_gomod]}"
+}
+
+function generate_subscription_api_dockerfile {
+  mkdir -p "$(dirname "${path[subscription_api_dockerfile]}")"
+  cat >"${path[subscription_api_dockerfile]}" <<EOF
+FROM ${image[golang]} AS build
+WORKDIR /src
+COPY go.mod .
+RUN go mod download
+COPY main.go .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/subscription-api .
+
+FROM ${image[alpine]}
+RUN apk add --no-cache ca-certificates
+COPY --from=build /out/subscription-api /usr/local/bin/subscription-api
+ENTRYPOINT ["/usr/local/bin/subscription-api"]
+EOF
+}
+
+# ── Subscription token management ────────────────────────────────────────────
+
+function generate_subscription_token {
+  openssl rand -base64 32 | tr -d '/+=\n' | head -c 43
+}
+
+function ensure_subscriptions_file {
+  if [[ ! -f "${path[subscriptions]}" ]]; then
+    printf '{"version":1,"users":{}}\n' > "${path[subscriptions]}"
+    chmod 600 "${path[subscriptions]}"
+  fi
+}
+
+function sync_subscriptions_file {
+  ensure_subscriptions_file
+  local tmp_file
+  tmp_file=$(mktemp "${config_path}/.subscriptions-XXXXXX.tmp")
+  trap 'rm -f "${tmp_file}"' RETURN
+
+  # Build updated JSON using python3 (available in modern Alpine/Ubuntu)
+  python3 - "${path[subscriptions]}" "${path[users]}" "${tmp_file}" <<'PYEOF'
+import json, sys, os, time
+
+subs_path, users_path, out_path = sys.argv[1], sys.argv[2], sys.argv[3]
+
+# Load subscriptions
+try:
+    with open(subs_path) as f:
+        subs = json.load(f)
+except Exception:
+    subs = {"version": 1, "users": {}}
+if not isinstance(subs.get("users"), dict):
+    subs["users"] = {}
+
+# Load users
+current_users = {}
+with open(users_path) as f:
+    for line in f:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        if '=' in line:
+            k, _, v = line.partition('=')
+            current_users[k] = v
+
+now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+# Remove deleted users
+subs["users"] = {u: e for u, e in subs["users"].items() if u in current_users}
+
+# Add new users without tokens
+import base64, secrets
+for u in current_users:
+    if u not in subs["users"]:
+        token = base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b'=').decode()
+        subs["users"][u] = {"token": token, "created_at": now, "rotated_at": now}
+
+with open(out_path, 'w') as f:
+    json.dump(subs, f, indent=2)
+    f.write('\n')
+PYEOF
+  chmod 600 "${tmp_file}"
+  mv "${tmp_file}" "${path[subscriptions]}"
+}
+
+function show_subscription_url {
+  local username="$1"
+  ensure_subscriptions_file
+  local token
+  token=$(python3 - "${path[subscriptions]}" "${username}" <<'PYEOF'
+import json, sys
+subs_path, username = sys.argv[1], sys.argv[2]
+try:
+    with open(subs_path) as f:
+        subs = json.load(f)
+    entry = subs.get("users", {}).get(username, {})
+    print(entry.get("token", ""), end="")
+except Exception:
+    pass
+PYEOF
+)
+  if [[ -z "${token}" ]]; then
+    echo "No subscription token for user '${username}'. Run sync or enable subscriptions first." >&2
+    return 1
+  fi
+  local sub_path="${config[subscription_path]:-sub}"
+  local host="${config[server]}"
+  local port="${config[port]}"
+  if [[ "${port}" != "443" ]]; then
+    host="${host}:${port}"
+  fi
+  echo "https://${host}/${sub_path}/${token}"
+}
+
+function rotate_subscription_token {
+  local username="$1"
+  ensure_subscriptions_file
+  local tmp_file new_token
+  tmp_file=$(mktemp "${config_path}/.subscriptions-XXXXXX.tmp")
+  trap 'rm -f "${tmp_file}"' RETURN
+  new_token=$(python3 - "${path[subscriptions]}" "${username}" "${tmp_file}" <<'PYEOF'
+import json, sys, base64, secrets, time
+
+subs_path, username, out_path = sys.argv[1], sys.argv[2], sys.argv[3]
+try:
+    with open(subs_path) as f:
+        subs = json.load(f)
+except Exception:
+    subs = {"version": 1, "users": {}}
+if not isinstance(subs.get("users"), dict):
+    subs["users"] = {}
+
+now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+token = base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b'=').decode()
+existing = subs["users"].get(username, {})
+subs["users"][username] = {
+    "token": token,
+    "created_at": existing.get("created_at", now),
+    "rotated_at": now,
+}
+with open(out_path, 'w') as f:
+    json.dump(subs, f, indent=2)
+    f.write('\n')
+print(token, end="")
+PYEOF
+)
+  chmod 600 "${tmp_file}"
+  mv "${tmp_file}" "${path[subscriptions]}"
+  echo "${new_token}"
 }
 
 function generate_selfsigned_certificate {
@@ -1001,233 +1573,39 @@ function generate_selfsigned_certificate {
 }
 
 function generate_engine_config {
-  local type="vless"
   local users_object=""
   local reality_object=""
   local tls_object=""
   local warp_object=""
+  local mldsa_fragment=""
+  local short_ids_json=""
+  local flow_part=""
+  local seed_part=""
+  local user_entry=""
+  local sid
+  local user
+  local -a short_ids_array=()
   local reality_port=443
   local temp_file
-  if [[ ${config[transport]} == 'tuic' ]]; then
-    type='tuic'
-  elif [[ ${config[transport]} == 'hysteria2' ]]; then
-    type='hysteria2'
-  elif [[ ${config[transport]} == 'shadowtls' ]]; then
-    type='shadowtls'
-  else
-    type='vless'
-  fi
-  if [[ (${config[security]} == 'reality' || ${config[transport]} == 'shadowtls') && ${config[domain]} =~ ":" ]]; then
+  if [[ ${config[security]} == 'reality' && ${config[domain]} =~ ":" ]]; then
     reality_port="${config[domain]#*:}"
   fi
-  if [[ ${config[core]} == 'sing-box' ]]; then
-    reality_object='"tls": {
-      "enabled": true,
-      "server_name": "'"${config[domain]%%:*}"'",
-      "alpn": [],
-      "reality": {
-        "enabled": true,
-        "handshake": {
-          "server": "'"${config[domain]%%:*}"'",
-          "server_port": '"${reality_port}"'
-        },
-        "private_key": "'"${config[private_key]}"'",
-        "short_id": ["'"${config[short_id]}"'"],
-        "max_time_difference": "1m"
-      }
-    }'
-    tls_object='"tls": {
-      "enabled": true,
-      "certificate_path": "/etc/sing-box/server.crt",
-      "key_path": "/etc/sing-box/server.key"
-    }'
-    if [[ ${config[warp]} == 'ON' ]]; then
-      warp_object='{
-        "type": "wireguard",
-        "tag": "warp",
-        "server": "engage.cloudflareclient.com",
-        "server_port": 2408,
-        "system_interface": false,
-        "local_address": [
-          "'"${config[warp_interface_ipv4]}"'/32",
-          "'"${config[warp_interface_ipv6]}"'/128"
-        ],
-        "private_key": "'"${config[warp_private_key]}"'",
-        "peer_public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
-        "reserved": '"$(warp_decode_reserved "${config[warp_client_id]}")"',
-        "mtu": 1280
-      },'
+  IFS=',' read -r -a short_ids_array <<< "${config[short_ids]}"
+  for sid in "${short_ids_array[@]}"; do
+    sid=$(echo "${sid}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+    [[ -z "${sid}" ]] && continue
+    if [[ -n "${short_ids_json}" ]]; then
+      short_ids_json+=", "
     fi
-    for user in "${!users[@]}"; do
-      if [ -n "$users_object" ]; then
-        users_object="${users_object},"$'\n'
-      fi
-      if [[ ${config[transport]} == 'tuic' ]]; then
-        users_object=${users_object}'{"uuid": "'"${users[${user}]}"'", "password": "'"$(echo -n "${user}${users[${user}]}" | sha256sum | cut -d ' ' -f 1 | head -c 16)"'", "name": "'"${user}"'"}'
-      elif [[ ${config[transport]} == 'hysteria2' ]]; then
-        users_object=${users_object}'{"password": "'"$(echo -n "${user}${users[${user}]}" | sha256sum | cut -d ' ' -f 1 | head -c 16)"'", "name": "'"${user}"'"}'
-      elif [[ ${config[transport]} == 'shadowtls' ]]; then
-        users_object=${users_object}'{"password": "'"${users[${user}]}"'", "name": "'"${user}"'"}'
-      else
-        users_object=${users_object}'{"uuid": "'"${users[${user}]}"'", "flow": "'"$([[ ${config[transport]} == 'tcp' ]] && echo 'xtls-rprx-vision' || true)"'", "name": "'"${user}"'"}'
-      fi
-    done
-    cat >"${path[engine]}" <<EOF
-{
-  "log": {
-    "level": "error",
-    "timestamp": true
-  },
-  "dns": {
-    "servers": [
-    $([[ ${config[safenet]} == ON ]] && echo '{"address": "tcp://1.1.1.3", "detour": "internet"},{"address": "tcp://1.0.0.3", "detour": "internet"}' || echo '{"address": "tcp://1.1.1.1", "detour": "internet"},{"address": "tcp://1.0.0.1", "detour": "internet"}')
-    ],
-    "strategy": "prefer_ipv4"
-  },
-  "inbounds": [
-    {
-      "type": "direct",
-      "listen": "::",
-      "listen_port": 8080,
-      "network": "tcp",
-      "override_address": "${config[domain]%%:*}",
-      "override_port": 80
-    },
-    {
-      "type": "${type}",
-      "listen": "::",
-      "listen_port": 8443,
-      "sniff": true,
-      "sniff_override_destination": true,
-      "domain_strategy": "prefer_ipv4",
-      "users": [${users_object}],
-      $(if [[ ${config[security]} == 'reality' && ${config[transport]} != 'shadowtls' ]]; then
-        echo "${reality_object}"
-      elif [[ ${config[transport]} == 'http' || ${config[transport]} == 'tcp' || ${config[transport]} == 'tuic' || ${config[transport]} == 'hysteria2' ]]; then
-        echo "${tls_object}"
-      elif [[ ${config[transport]} == 'shadowtls' ]]; then
-        :
-      else
-        echo '"tls":{"enabled": false}'
-      fi)
-      $(if [[ ${config[transport]} == http ]]; then
-      echo ',"transport": {"type": "http", "host": ["'"${config[server]}"'"], "path": "/'"${config[service_path]}"'"}'
-      fi
-      if [[ ${config[transport]} == grpc ]]; then
-      echo ',"transport": {"type": "grpc","service_name": "'"${config[service_path]}"'"}'
-      fi 
-      if [[ ${config[transport]} == ws ]]; then
-      echo ',"transport": {"type": "ws", "headers": {"Host": "'"${config[server]}"'"}, "path": "/'"${config[service_path]}"'"}'
-      fi
-      if [[ ${config[transport]} == tuic ]]; then
-      echo ',"congestion_control": "bbr", "auth_timeout": "3s", "zero_rtt_handshake": false, "heartbeat": "10s"'
-      fi
-      if [[ ${config[transport]} == hysteria2 ]]; then
-      echo ',"obfs": {"type": "salamander", "password": "'"${config[service_path]}"'"}, "ignore_client_bandwidth": true, "masquerade": "https://'"${config[server]}:${config[port]}"'"'
-      fi
-      if [[ ${config[transport]} == shadowtls ]]; then
-      echo '"version": 3, "strict_mode": false, "detour": "shadowsocks", "handshake": {"server": "'"${config[domain]%%:*}"'", "server_port": '"${reality_port}"'}'
-      fi
-      )
-    }
-    $(if [[ ${config[transport]} == 'shadowtls' ]]; then
-    echo ', {
-      "type": "shadowsocks",
-      "tag": "shadowsocks",
-      "listen": "127.0.0.1",
-      "listen_port": 8444,
-      "sniff": true,
-      "sniff_override_destination": true,
-      "domain_strategy": "prefer_ipv4",
-      "method": "chacha20-ietf-poly1305",
-      "password": "'"${config[private_key]}"'",
-      "users": ['"${users_object}"']
-    }'
-    fi )
-  ],
-  "outbounds": [
-    {
-      "type": "direct",
-      "tag": "internet"
-    },
-    $([[ ${config[warp]} == ON ]] && echo "${warp_object}" || true)
-    {
-      "type": "block",
-      "tag": "block"
-    }
-  ],
-  "route": {
-    "final": "$([[ ${config[warp]} == ON ]] && echo "warp" || echo "internet")",
-    "rule_set": [
-      {
-        "tag": "block",
-        "type": "remote",
-        "format": "binary",
-        "url": "https://raw.githubusercontent.com/WhoYa/sing-box-rules/refs/heads/rule-set/block.srs",
-        "download_detour": "internet"
-      },
-      {
-        "tag": "nsfw",
-        "type": "remote",
-        "format": "binary",
-        "url": "https://raw.githubusercontent.com/WhoYa/sing-box-rules/refs/heads/rule-set/geosite-nsfw.srs",
-        "download_detour": "internet"
-      },
-      {
-        "tag": "geoip-private",
-        "type": "remote",
-        "format": "binary",
-        "url": "https://raw.githubusercontent.com/WhoYa/sing-box-rules/refs/heads/rule-set/geoip-private.srs",
-        "download_detour": "internet"
-      },
-      {
-        "tag": "geosite-private",
-        "type": "remote",
-        "format": "binary",
-        "url": "https://raw.githubusercontent.com/WhoYa/sing-box-rules/refs/heads/rule-set/geosite-private.srs",
-        "download_detour": "internet"
-      },
-      {
-        "tag": "bypass",
-        "type": "remote",
-        "format": "binary",
-        "url": "https://raw.githubusercontent.com/WhoYa/sing-box-rules/refs/heads/rule-set/bypass.srs",
-        "download_detour": "internet"
-      }
-    ],
-    "rules": [
-      {
-        "rule_set": [
-          "block",
-          "geoip-private",
-          "geosite-private"
-          $([[ ${config[safenet]} == ON ]] && echo ',"nsfw"' || true)
-          $([[ ${config[warp]} == OFF ]] && echo ',"bypass"')
-        ],
-        "outbound": "block"
-      },
-      {
-        "network": "tcp",
-        "port": [
-          25,
-          587,
-          465,
-          2525
-        ],
-        "outbound": "block"
-      }
-    ]
-  },
-  "experimental": {
-    "cache_file": {
-      "enabled": true
-    }
-  }
-}
-EOF
+    short_ids_json+="\"${sid}\""
+  done
+  if [[ -z "${short_ids_json}" ]]; then
+    short_ids_json="\"${config[short_id]}\""
   fi
-  if [[ ${config[core]} == 'xray' ]]; then
-    reality_object='"security":"reality",
+  if [[ ${config[xray_experimental]} == 'ON' && -n ${config[reality_mldsa65_seed]} ]]; then
+    mldsa_fragment=', "mldsa65Seed": "'"${config[reality_mldsa65_seed]}"'"'
+  fi
+  reality_object='"security":"reality",
     "realitySettings":{
       "show": false,
       "dest": "'"${config[domain]%%:*}"':'"${reality_port}"'",
@@ -1235,9 +1613,19 @@ EOF
       "serverNames": ["'"${config[domain]%%:*}"'"],
       "privateKey": "'"${config[private_key]}"'",
       "maxTimeDiff": 60000,
-      "shortIds": ["'"${config[short_id]}"'"]
+      "shortIds": ['"${short_ids_json}"']'"${mldsa_fragment}"',
+      "limitFallbackUpload": {
+        "afterBytes": '"${config[reality_limit_fallback_upload_after_bytes]}"',
+        "bytesPerSec": '"${config[reality_limit_fallback_upload_bytes_per_sec]}"',
+        "burstBytesPerSec": '"${config[reality_limit_fallback_upload_burst_bytes_per_sec]}"'
+      },
+      "limitFallbackDownload": {
+        "afterBytes": '"${config[reality_limit_fallback_download_after_bytes]}"',
+        "bytesPerSec": '"${config[reality_limit_fallback_download_bytes_per_sec]}"',
+        "burstBytesPerSec": '"${config[reality_limit_fallback_download_burst_bytes_per_sec]}"'
+      }
     }'
-    tls_object='"security": "tls",
+  tls_object='"security": "tls",
     "tlsSettings": {
       "certificates": [{
         "oneTimeLoading": true,
@@ -1245,34 +1633,77 @@ EOF
         "keyFile": "/etc/xray/server.key"
       }]
     }'
-    if [[ ${config[warp]} == 'ON' ]]; then
-      warp_object='{
-        "protocol": "wireguard",
-        "tag": "warp",
-        "settings": {
-          "secretKey": "'"${config[warp_private_key]}"'",
-          "address": [
-            "'"${config[warp_interface_ipv4]}"'/32",
-            "'"${config[warp_interface_ipv6]}"'/128"
-          ],
-          "peers": [
-            {
-              "endpoint": "engage.cloudflareclient.com:2408",
-              "publicKey": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo="
-            }
-          ],
-          "mtu": 1280
-        }
-      },'
+  if [[ ${config[warp]} == 'ON' ]]; then
+    warp_object='{
+      "protocol": "wireguard",
+      "tag": "warp",
+      "settings": {
+        "secretKey": "'"${config[warp_private_key]}"'",
+        "address": [
+          "'"${config[warp_interface_ipv4]}"'/32",
+          "'"${config[warp_interface_ipv6]}"'/128"
+        ],
+        "peers": [
+          {
+            "endpoint": "engage.cloudflareclient.com:2408",
+            "publicKey": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo="
+          }
+        ],
+        "mtu": 1280
+      }
+    },'
+  fi
+  for user in "${!users[@]}"; do
+    if [ -n "$users_object" ]; then
+      users_object="${users_object},"$'\n'
     fi
-    for user in "${!users[@]}"; do
-      if [ -n "$users_object" ]; then
-        users_object="${users_object},"$'\n'
-      fi
-      users_object=${users_object}'{"id": "'"${users[${user}]}"'", "flow": "'"$([[ ${config[transport]} == 'tcp' ]] && echo 'xtls-rprx-vision' || true)"'", "email": "'"${user}"'"}'
-    done
-    cat >"${path[engine]}" <<EOF
+    flow_part=""
+    seed_part=""
+    if [[ ${config[transport]} == 'tcp' ]]; then
+      flow_part=', "flow": "xtls-rprx-vision"'
+    fi
+    if [[ ${config[xray_experimental]} == 'ON' && \
+          ${config[experimental_user]} == "${user}" && \
+          -n ${config[experimental_test_seed]} ]]; then
+      seed_part=', "testSeed": "'"${config[experimental_test_seed]}"'"'
+    fi
+    user_entry='{"id": "'"${users[${user}]}"'", "email": "'"${user}"'"'"${flow_part}${seed_part}"'}'
+    users_object=${users_object}${user_entry}
+  done
+  cat >"${path[engine]}" <<EOF
 {
+  "version": {
+    "min": "${config[xray_version_min]}"
+  },
+  "api": {
+    "tag": "xray_api",
+    "services": [
+      "HandlerService",
+      "StatsService",
+      "RoutingService",
+      "ReflectionService"
+    ]
+  },
+  "stats": {},
+  "metrics": {
+    "tag": "xray_metrics"
+  },
+  "observatory": {
+    "subjectSelector": ["internet", "warp"],
+    "probeUrl": "https://www.google.com/generate_204",
+    "probeInterval": "20s",
+    "enableConcurrency": false
+  },
+  "burstObservatory": {
+    "subjectSelector": ["internet", "warp"],
+    "pingConfig": {
+      "destination": "https://www.google.com/generate_204",
+      "connectivity": "",
+      "interval": "30s",
+      "sampling": 3,
+      "timeout": "5s"
+    }
+  },
   "log": {
     "loglevel": "error"
   },
@@ -1280,6 +1711,24 @@ EOF
     "servers": [$([[ ${config[safenet]} == ON ]] && echo '"tcp+local://1.1.1.3","tcp+local://1.0.0.3"' || echo '"tcp+local://1.1.1.1","tcp+local://1.0.0.1"')]
   },
   "inbounds": [
+    {
+      "listen": "127.0.0.1",
+      "port": 10085,
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1"
+      },
+      "tag": "xray_api_in"
+    },
+    {
+      "listen": "127.0.0.1",
+      "port": 11111,
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1"
+      },
+      "tag": "xray_metrics_in"
+    },
     {
       "listen": "0.0.0.0",
       "port": 8080,
@@ -1303,7 +1752,7 @@ EOF
         $([[ ${config[transport]} == 'grpc' ]] && echo '"grpcSettings": {"serviceName": "'"${config[service_path]}"'"},' || true)
         $([[ ${config[transport]} == 'ws' ]] && echo '"wsSettings": {"headers": {"Host": "'"${config[server]}"'"}, "path": "/'"${config[service_path]}"'"},' || true)
         $([[ ${config[transport]} == 'http' ]] && echo '"httpSettings": {"host":["'"${config[server]}"'"], "path": "/'"${config[service_path]}"'"},' || true)
-        $([[ ${config[transport]} == 'xhttp' ]] && echo '"xhttpSettings": {"host": "'"${config[server]}"'", "path": "/'"${config[service_path]}"'"},' || true)
+        $([[ ${config[transport]} == 'xhttp' ]] && echo '"xhttpSettings": {"host": "'"${config[server]}"'", "path": "/'"${config[service_path]}"'", "mode": "'"${config[xhttp_mode]:-stream-up}"'"},' || true)
         "network": "${config[transport]}",
         $(if [[ ${config[security]} == 'reality' ]]; then
           echo "${reality_object}"
@@ -1325,7 +1774,10 @@ EOF
   "outbounds": [
     {
       "protocol": "freedom",
-      "tag": "internet"
+      "tag": "internet"$(
+        if [[ ${config[fragment]:-OFF} == ON ]]; then
+          printf ',\n      "settings": {"fragment": {"packets": "tlshello", "length": "100-200", "interval": "10-20"}}'
+        fi)
     },
     $([[ ${config[warp]} == ON ]] && echo "${warp_object}" || true)
     {
@@ -1336,6 +1788,16 @@ EOF
   "routing": {
     "domainStrategy": "IPIfNonMatch",
     "rules": [
+      {
+        "type": "field",
+        "inboundTag": ["xray_api_in"],
+        "outboundTag": "xray_api"
+      },
+      {
+        "type": "field",
+        "inboundTag": ["xray_metrics_in"],
+        "outboundTag": "xray_metrics"
+      },
       {
         "type": "field",
         "ip": [
@@ -1392,45 +1854,63 @@ EOF
     "levels": {
       "0": {
         "handshake": 2,
-        "connIdle": 120
+        "connIdle": 120,
+        "statsUserUplink": true,
+        "statsUserDownlink": true,
+        "statsUserOnline": true
       }
+    },
+    "system": {
+      "statsInboundUplink": true,
+      "statsInboundDownlink": true,
+      "statsOutboundUplink": true,
+      "statsOutboundDownlink": true
     }
   }
 }
 EOF
-  fi
-  if [[ -r ${config_path}/${config[core]}.patch ]]; then
-    if ! jq empty ${config_path}/${config[core]}.patch; then
-      echo "${config[core]}.patch is not a valid json file. Fix it or remove it!"
+  if [[ -r ${config_path}/xray.patch ]]; then
+    if ! jq empty "${config_path}/xray.patch"; then
+      echo "xray.patch is not a valid json file. Fix it or remove it!"
       exit 1
     fi
     temp_file=$(mktemp)
-    jq -s add ${path[engine]} ${config_path}/${config[core]}.patch > ${temp_file}
-    mv ${temp_file} ${path[engine]}
+    jq -s add "${path[engine]}" "${config_path}/xray.patch" > "${temp_file}"
+    mv "${temp_file}" "${path[engine]}"
   fi
 }
 
 function generate_config {
   generate_docker_compose
   generate_engine_config
-  if [[ ${config[security]} != "reality" && ${config[transport]} != 'shadowtls' ]]; then
+  if [[ ${config[security]} != "reality" ]]; then
     mkdir -p "${config_path}/certificate"
     generate_haproxy_config
     if [[ ! -r "${path[server_pem]}" || ! -r "${path[server_crt]}" || ! -r "${path[server_key]}" ]]; then
       generate_selfsigned_certificate
     fi
   fi
-  if [[ ${config[security]} == "letsencrypt" && ${config[transport]} != 'shadowtls' ]]; then
+  if [[ ${config[security]} == "letsencrypt" ]]; then
     mkdir -p "${config_path}/certbot"
     generate_certbot_deployhook
     generate_certbot_dockerfile
     generate_certbot_script
   fi
   if [[ ${config[tgbot]} == "ON" ]]; then
-    mkdir -p "${config_path}/tgbot"
+    mkdir -p "${config_path}/tgbot/api"
+    mkdir -p "${config_path}/tgbot/bot"
+    mkdir -p "${config_path}/tgbot/helper"
     generate_tgbot_compose
-    generate_tgbot_dockerfile
-    download_tgbot_script
+    generate_tgbot_api_dockerfile
+    generate_tgbot_bot_dockerfile
+    generate_tgbot_helper_dockerfile
+    sync_tgbot_sources || exit 1
+  fi
+  if [[ ${config[subscriptions]} == "ON" && ${config[security]} != "reality" ]]; then
+    mkdir -p "${config_path}/subscription-api"
+    generate_subscription_api_dockerfile
+    sync_subscription_api_sources || exit 1
+    sync_subscriptions_file || true
   fi
 }
 
@@ -1440,75 +1920,78 @@ function get_ipv6 {
 
 function print_client_configuration {
   local username=$1
+  local client_config_base
   local client_config
   local ipv6
   local client_config_ipv6
-  if [[ ${config[transport]} == 'tuic' ]]; then
-    client_config="tuic://"
-    client_config="${client_config}${users[${username}]}"
-    client_config="${client_config}:$(echo -n "${username}${users[${username}]}" | sha256sum | cut -d ' ' -f 1 | head -c 16)"
-    client_config="${client_config}@${config[server]}"
-    client_config="${client_config}:${config[port]}"
-    client_config="${client_config}/?congestion_control=bbr&udp_relay_mode=quic"
-    client_config="${client_config}$([[ ${config[security]} == 'selfsigned' ]] && echo "&allow_insecure=1" || true)"
-    client_config="${client_config}#${username}"
-  elif [[ ${config[transport]} == 'hysteria2' ]]; then
-    client_config="hy2://"
-    client_config="${client_config}$(echo -n "${username}${users[${username}]}" | sha256sum | cut -d ' ' -f 1 | head -c 16)"
-    client_config="${client_config}@${config[server]}"
-    client_config="${client_config}:${config[port]}"
-    client_config="${client_config}/?obfs=salamander&obfs-password=${config[service_path]}"
-    client_config="${client_config}$([[ ${config[security]} == 'selfsigned' ]] && echo "&insecure=1" || true)"
-    client_config="${client_config}#${username}"
-  elif [[ ${config[transport]} == 'shadowtls' ]]; then
-    client_config='{"dns":{"independent_cache":true,"rules":[{"domain":["dns.google"],"server":"dns-direct"}],"servers":[{"address":"https://dns.google/dns-query","address_resolver":"dns-direct","strategy":"ipv4_only","tag":"dns-remote"},{"address":"local","address_resolver":"dns-local","detour":"direct","strategy":"ipv4_only","tag":"dns-direct"},{"address":"local","detour":"direct","tag":"dns-local"},{"address":"rcode://success","tag":"dns-block"}]},"inbounds":[{"listen":"127.0.0.1","listen_port":6450,"override_address":"8.8.8.8","override_port":53,"tag":"dns-in","type":"direct"},{"domain_strategy":"","endpoint_independent_nat":true,"inet4_address":["172.19.0.1/28"],"mtu":9000,"sniff":true,"sniff_override_destination":false,"stack":"mixed","tag":"tun-in","auto_route":true,"type":"tun"},{"domain_strategy":"","listen":"127.0.0.1","listen_port":2080,"sniff":true,"sniff_override_destination":false,"tag":"mixed-in","type":"mixed"}],"log":{"level":"warning"},"outbounds":[{"method":"chacha20-ietf-poly1305","password":"'"${users[${username}]}"'","server":"127.0.0.1","server_port":1080,"type":"shadowsocks","udp_over_tcp":true,"domain_strategy":"","tag":"proxy","detour":"shadowtls"},{"password":"'"${users[${username}]}"'","server":"'"${config[server]}"'","server_port":'"${config[port]}"',"tls":{"enabled":true,"insecure":false,"server_name":"'"${config[domain]%%:*}"'","utls":{"enabled":true,"fingerprint":"chrome"}},"version":3,"type":"shadowtls","domain_strategy":"","tag":"shadowtls"},{"tag":"direct","type":"direct"},{"tag":"bypass","type":"direct"},{"tag":"block","type":"block"},{"tag":"dns-out","type":"dns"}],"route":{"auto_detect_interface":true,"rule_set":[],"rules":[{"outbound":"dns-out","port":[53]},{"inbound":["dns-in"],"outbound":"dns-out"},{"ip_cidr":["224.0.0.0/3","ff00::/8"],"outbound":"block","source_ip_cidr":["224.0.0.0/3","ff00::/8"]}]}}'
-  else
-    client_config="vless://"
-    client_config="${client_config}${users[${username}]}"
-    client_config="${client_config}@${config[server]}"
-    client_config="${client_config}:${config[port]}"
-    client_config="${client_config}?security=$([[ ${config[security]} == 'reality' ]] && echo reality || echo tls)"
-    client_config="${client_config}&encryption=none"
-    client_config="${client_config}&alpn=$([[ ${config[transport]} == 'ws' ]] && echo 'http/1.1' || echo 'h2,http/1.1')"
-    client_config="${client_config}&headerType=none"
-    client_config="${client_config}&fp=chrome"
-    client_config="${client_config}&type=${config[transport]}"
-    client_config="${client_config}&flow=$([[ ${config[transport]} == 'tcp' ]] && echo 'xtls-rprx-vision' || true)"
-    client_config="${client_config}&sni=${config[domain]%%:*}"
-    client_config="${client_config}$([[ ${config[transport]} == 'ws' || ${config[transport]} == 'http' || ${config[transport]} == 'xhttp' ]] && echo "&host=${config[server]}" || true)"
-    client_config="${client_config}$([[ ${config[security]} == 'reality' ]] && echo "&pbk=${config[public_key]}" || true)"
-    client_config="${client_config}$([[ ${config[security]} == 'reality' ]] && echo "&sid=${config[short_id]}" || true)"
-    client_config="${client_config}$([[ ${config[transport]} == 'ws' || ${config[transport]} == 'http' || ${config[transport]} == 'xhttp' ]] && echo "&path=%2F${config[service_path]}" || true)"
-    client_config="${client_config}$([[ ${config[transport]} == 'grpc' ]] && echo '&mode=gun' || true)"
-    client_config="${client_config}$([[ ${config[transport]} == 'grpc' ]] && echo "&serviceName=${config[service_path]}" || true)"
-    client_config="${client_config}#${username}"
+  local sid
+  local sid_index=0
+  local primary_done=false
+  local -a short_ids_array=()
+  client_config_base="vless://"
+  client_config_base="${client_config_base}${users[${username}]}"
+  client_config_base="${client_config_base}@${config[server]}"
+  client_config_base="${client_config_base}:${config[port]}"
+  client_config_base="${client_config_base}?security=$([[ ${config[security]} == 'reality' ]] && echo reality || echo tls)"
+  client_config_base="${client_config_base}&encryption=none"
+  client_config_base="${client_config_base}&alpn=$([[ ${config[transport]} == 'ws' ]] && echo 'http/1.1' || echo 'h2,http/1.1')"
+  client_config_base="${client_config_base}&headerType=none"
+  client_config_base="${client_config_base}&fp=${config[fingerprint]:-random}"
+  client_config_base="${client_config_base}&type=${config[transport]}"
+  client_config_base="${client_config_base}&flow=$([[ ${config[transport]} == 'tcp' ]] && echo 'xtls-rprx-vision' || true)"
+  client_config_base="${client_config_base}&sni=${config[domain]%%:*}"
+  client_config_base="${client_config_base}$([[ ${config[transport]} == 'ws' || ${config[transport]} == 'http' || ${config[transport]} == 'xhttp' ]] && echo "&host=${config[server]}" || true)"
+  client_config_base="${client_config_base}$([[ ${config[security]} == 'reality' ]] && echo "&pbk=${config[public_key]}" || true)"
+  client_config_base="${client_config_base}$([[ ${config[transport]} == 'ws' || ${config[transport]} == 'http' || ${config[transport]} == 'xhttp' ]] && echo "&path=%2F${config[service_path]}" || true)"
+  client_config_base="${client_config_base}$([[ ${config[transport]} == 'grpc' ]] && echo '&mode=gun' || true)"
+  client_config_base="${client_config_base}$([[ ${config[transport]} == 'grpc' ]] && echo "&serviceName=${config[service_path]}" || true)"
+  if [[ ${config[xray_experimental]} == 'ON' && \
+        ${config[experimental_user]} == "${username}" && \
+        -n ${config[experimental_test_seed]} ]]; then
+    client_config_base="${client_config_base}&seed=${config[experimental_test_seed]}"
   fi
-  echo ""
-  echo "=================================================="
-  echo "Client configuration:"
-  echo ""
-  echo "$client_config"
-  echo ""
-  echo "Or you can scan the QR code:"
-  echo ""
-  qrencode -t ansiutf8 "${client_config}"
-  ipv6=$(get_ipv6)
-  if [[ -n $ipv6 ]]; then
-    if [[ ${config[transport]} != 'shadowtls' ]]; then
-      client_config_ipv6=$(echo "$client_config" | sed "s/@${config[server]}:/@[${ipv6}]:/" | sed "s/#${username}/#${username}-ipv6/")
-    else
-      client_config_ipv6=$(echo "$client_config" | sed "s/\"server\":\"${config[server]}\"/\"server\":\"${ipv6}\"/")
+  if [[ ${config[security]} == 'reality' ]]; then
+    IFS=',' read -r -a short_ids_array <<< "${config[short_ids]}"
+  else
+    short_ids_array+=("")
+  fi
+  for sid in "${short_ids_array[@]}"; do
+    sid_index=$((sid_index+1))
+    client_config="${client_config_base}"
+    if [[ ${config[security]} == 'reality' ]]; then
+      client_config="${client_config}&sid=${sid}"
+    fi
+    client_config="${client_config}#${username}$([[ ${sid_index} -gt 1 ]] && echo "-sid${sid_index}" || true)"
+    if [[ ${primary_done} == false ]]; then
+      primary_done=true
+      echo ""
+      echo "=================================================="
+      echo "Client configuration:"
+      echo ""
+      echo "$client_config"
+      echo ""
+      echo "Or you can scan the QR code:"
+      echo ""
+      qrencode -t ansiutf8 "${client_config}"
+      ipv6=$(get_ipv6)
+      if [[ -n $ipv6 ]]; then
+        client_config_ipv6=$(echo "$client_config" | sed "s/@${config[server]}:/@[${ipv6}]:/" | sed "s/#${username}/#${username}-ipv6/")
+        echo ""
+        echo "==================IPv6 Config======================"
+        echo "Client configuration:"
+        echo ""
+        echo "$client_config_ipv6"
+        echo ""
+        echo "Or you can scan the QR code:"
+        echo ""
+        qrencode -t ansiutf8 "${client_config_ipv6}"
+      fi
+      continue
     fi
     echo ""
-    echo "==================IPv6 Config======================"
-    echo "Client configuration:"
-    echo ""
-    echo "$client_config_ipv6"
-    echo ""
-    echo "Or you can scan the QR code:"
-    echo ""
-    qrencode -t ansiutf8 "${client_config_ipv6}"
-  fi
+    echo "Alternative rotated shortId config #${sid_index}:"
+    echo "${client_config}"
+  done
 }
 
 function upgrade {
@@ -1532,9 +2015,13 @@ function upgrade {
   fi
   if [[ -r ${path[config]} ]]; then
     sed -i 's|transport=h2|transport=http|g' "${path[config]}"
-    sed -i 's|core=singbox|core=sing-box|g' "${path[config]}"
+    sed -i 's|transport=tuic|transport=tcp|g' "${path[config]}"
+    sed -i 's|transport=hysteria2|transport=tcp|g' "${path[config]}"
+    sed -i 's|transport=shadowtls|transport=tcp|g' "${path[config]}"
     sed -i 's|security=tls-invalid|security=selfsigned|g' "${path[config]}"
     sed -i 's|security=tls-valid|security=letsencrypt|g' "${path[config]}"
+    sed -i 's|^tgbot_admins=|tgbot_admin_ids=|g' "${path[config]}"
+    sed -i '/^core=/d' "${path[config]}"
   fi
   for key in "${!path[@]}"; do
     if [[ -d "${path[$key]}" ]]; then
@@ -1647,7 +2134,7 @@ function delete_user_menu {
     if [[ $? -ne 0 ]]; then
       continue
     fi
-    unset users["${username}"]
+    unset "users[$username]"
     update_users_file
     message_box "Delete User" 'User "'"${username}"'" has been deleted.'
   done
@@ -1665,50 +2152,7 @@ function view_user_menu {
         return 0
       fi
     fi
-    if [[ ${config[transport]} == 'tuic' ]]; then
-      user_config=$(echo "
-Protocol: tuic
-Remarks: ${username}
-Address: ${config[server]}
-Port: ${config[port]}
-UUID: ${users[$username]}
-Password: $(echo -n "${username}${users[${username}]}" | sha256sum | cut -d ' ' -f 1 | head -c 16)
-UDP Relay Mode: quic
-Congestion Control: bbr
-      " | tr -s '\n')
-    elif [[ ${config[transport]} == 'hysteria2' ]]; then
-      user_config=$(echo "
-Protocol: hysteria2
-Remarks: ${username}
-Address: ${config[server]}
-Port: ${config[port]}
-Password: $(echo -n "${username}${users[${username}]}" | sha256sum | cut -d ' ' -f 1 | head -c 16)
-OBFS Type: salamander
-OBFS Password: ${config[service_path]}
-      " | tr -s '\n')
-    elif [[ ${config[transport]} == 'shadowtls' ]]; then
-      user_config=$(echo "
-=== First item of the chain proxy ===
-Protocol: shadowtls
-Remarks: ${username}-shadowtls
-Address: ${config[server]}
-Port: ${config[port]}
-Password: ${users[$username]}
-Protocol Version: 3
-SNI: ${config[domain]%%:*}
-Fingerprint: chrome
-=== Second item of the chain proxy ===
-Protocol: shadowsocks
-Remarks: ${username}-shadowsocks
-Address: 127.0.0.1
-Port: 1080
-Password: ${users[$username]}
-Encryption Method: chacha20-ietf-poly1305
-UDP over TCP: true
-
-      " | tr -s '\n')
-    else
-      user_config=$(echo "
+    user_config=$(echo "
 Protocol: vless
 Remarks: ${username}
 Address: ${config[server]}
@@ -1725,9 +2169,9 @@ SNI: ${config[domain]%%:*}
 ALPN: $([[ ${config[transport]} == 'ws' ]] && echo 'http/1.1' || echo 'h2,http/1.1')
 Fingerprint: chrome
 $([[ ${config[security]} == 'reality' ]] && echo "PublicKey: ${config[public_key]}" || true)
-$([[ ${config[security]} == 'reality' ]] && echo "ShortId: ${config[short_id]}" || true)
-      " | tr -s '\n')
-    fi
+$([[ ${config[security]} == 'reality' ]] && echo "ShortIds: ${config[short_ids]}" || true)
+$([[ ${config[xray_experimental]} == 'ON' && ${config[experimental_user]} == "${username}" && -n ${config[experimental_test_seed]} ]] && echo "Experimental Seed: ${config[experimental_test_seed]}" || true)
+    " | tr -s '\n')
     whiptail \
       --clear \
       --backtitle "$BACKTITLE" \
@@ -1742,7 +2186,7 @@ $([[ ${config[security]} == 'reality' ]] && echo "ShortId: ${config[short_id]}" 
       print_client_configuration "${username}"
       echo
       echo "Press Enter to return ..."
-      read
+      read -r
       clear
     fi
     if [[ $# -gt 0 ]]; then
@@ -1753,11 +2197,15 @@ $([[ ${config[security]} == 'reality' ]] && echo "ShortId: ${config[short_id]}" 
 
 function list_users_menu {
   local title=$1
-  local options
+  local -a options=()
+  local key
+  local value
   local selection
-  options=$(dict_expander users)
+  while IFS=' ' read -r key value; do
+    options+=("${key}" "${value}")
+  done < <(dict_expander users)
   selection=$(whiptail --clear --noitem --backtitle "$BACKTITLE" --title "$title" \
-    --menu "Select the user" $HEIGHT $WIDTH $CHOICE_HEIGHT $options \
+    --menu "Select the user" $HEIGHT $WIDTH $CHOICE_HEIGHT "${options[@]}" \
     3>&1 1>&2 2>&3)
   if [[ $? -ne 0 ]]; then
     return 1
@@ -1767,18 +2215,26 @@ function list_users_menu {
 
 function show_server_config {
   local server_config
-  server_config="Core: ${config[core]}"
+  server_config="Core: xray"
   server_config=$server_config$'\n'"Server Address: ${config[server]}"
   server_config=$server_config$'\n'"Domain SNI: ${config[domain]}"
   server_config=$server_config$'\n'"Port: ${config[port]}"
   server_config=$server_config$'\n'"Transport: ${config[transport]}"
   server_config=$server_config$'\n'"Security: ${config[security]}"
+  server_config=$server_config$'\n'"Xray version.min: ${config[xray_version_min]}"
   server_config=$server_config$'\n'"Safenet: ${config[safenet]}"
   server_config=$server_config$'\n'"WARP: ${config[warp]}"
-  server_config=$server_config$'\n'"WARP License: ${config[warp_license]}"
+  server_config=$server_config$'\n'"REALITY shortIds: ${config[short_ids]}"
+  server_config=$server_config$'\n'"Fallback Upload Limit (after/base/burst): ${config[reality_limit_fallback_upload_after_bytes]}/${config[reality_limit_fallback_upload_bytes_per_sec]}/${config[reality_limit_fallback_upload_burst_bytes_per_sec]}"
+  server_config=$server_config$'\n'"Fallback Download Limit (after/base/burst): ${config[reality_limit_fallback_download_after_bytes]}/${config[reality_limit_fallback_download_bytes_per_sec]}/${config[reality_limit_fallback_download_burst_bytes_per_sec]}"
+  server_config=$server_config$'\n'"Xray Experimental: ${config[xray_experimental]}"
+  server_config=$server_config$'\n'"Experimental User: ${config[experimental_user]}"
+  server_config=$server_config$'\n'"WARP License: $([[ -n ${config[warp_license]} ]] && echo '[set]' || echo '[empty]')"
   server_config=$server_config$'\n'"Telegram Bot: ${config[tgbot]}"
-  server_config=$server_config$'\n'"Telegram Bot Token: ${config[tgbot_token]}"
-  server_config=$server_config$'\n'"Telegram Bot Admins: ${config[tgbot_admins]}"
+  server_config=$server_config$'\n'"Telegram Bot Token: [hidden]"
+  server_config=$server_config$'\n'"Telegram Bot Admin IDs: ${config[tgbot_admin_ids]}"
+  server_config=$server_config$'\n'"Internal API Token: [hidden]"
+  server_config=$server_config$'\n'"Internal Helper Token: [hidden]"
   echo "${server_config}"
 }
 
@@ -1845,101 +2301,64 @@ function configuration_menu {
   while true; do
     selection=$(whiptail --clear --backtitle "$BACKTITLE" --title "Configuration" \
       --menu "Select an option:" $HEIGHT $WIDTH $CHOICE_HEIGHT \
-      "1" "Core" \
-      "2" "Server Address" \
-      "3" "Transport" \
-      "4" "SNI Domain" \
-      "5" "Security" \
-      "6" "Port" \
-      "7" "Safe Internet" \
-      "8" "WARP" \
-      "9" "Telegram Bot" \
-      "10" "Restart Services" \
-      "11" "Regenerate Keys" \
-      "12" "Restore Defaults" \
-      "13" "Create Backup" \
-      "14" "Restore Backup" \
+      "1" "Server Address" \
+      "2" "Transport" \
+      "3" "SNI Domain" \
+      "4" "Security" \
+      "5" "Port" \
+      "6" "Safe Internet" \
+      "7" "WARP" \
+      "8" "Telegram Bot" \
+      "9" "Restart Services" \
+      "10" "Regenerate Keys" \
+      "11" "Restore Defaults" \
+      "12" "Create Backup" \
+      "13" "Restore Backup" \
       3>&1 1>&2 2>&3)
     if [[ $? -ne 0 ]]; then
       break
     fi
     case $selection in
       1 )
-        config_core_menu
-        ;;
-      2 )
         config_server_menu
         ;;
-      3 )
+      2 )
         config_transport_menu
         ;;
-      4 )
+      3 )
         config_sni_domain_menu
         ;;
-      5 )
+      4 )
         config_security_menu
         ;;
-      6 )
+      5 )
         config_port_menu
         ;;
-      7 )
+      6 )
         config_safenet_menu
         ;;
-      8 )
+      7 )
         config_warp_menu
         ;;
-      9 )
+      8 )
         config_tgbot_menu
         ;;
-      10 )
+      9 )
         restart_menu
         ;;
-      11 )
+      10 )
         regenerate_menu
         ;;
-      12 )
+      11 )
         restore_defaults_menu
         ;;
-      13 )
+      12 )
         backup_menu
         ;;
-      14 )
+      13 )
         restore_backup_menu
         ;;
     esac
-  done
-}
-
-function config_core_menu {
-  local core
-  while true; do
-    core=$(whiptail --clear --backtitle "$BACKTITLE" --title "Core" \
-      --radiolist --noitem "Select a core engine:" $HEIGHT $WIDTH $CHOICE_HEIGHT \
-      "xray" "$([[ "${config[core]}" == 'xray' ]] && echo 'on' || echo 'off')" \
-      "sing-box" "$([[ "${config[core]}" == 'sing-box' ]] && echo 'on' || echo 'off')" \
-      3>&1 1>&2 2>&3)
-    if [[ $? -ne 0 ]]; then
-      break
-    fi
-    if [[ ${core} == 'xray' && ${config[transport]} == 'tuic' ]]; then
-      message_box 'Invalid Configuration' 'You cannot use "xray" core with "tuic" transport. Change core to "sing-box" or use other transports'
-      continue
-    fi
-    if [[ ${core} == 'xray' && ${config[transport]} == 'hysteria2' ]]; then
-      message_box 'Invalid Configuration' 'You cannot use "xray" core with "hysteria2" transport. Change core to "sing-box" or use other transports'
-      continue
-    fi
-    if [[ ${core} == 'xray' && ${config[transport]} == 'shadowtls' ]]; then
-      message_box 'Invalid Configuration' 'You cannot use "xray" core with "shadowtls" transport. Change core to "sing-box" or use other transports'
-      continue
-    fi
-    if [[ ${core} == 'sing-box' && ${config[transport]} == 'xhttp' ]]; then
-      message_box 'Invalid Configuration' 'You cannot use "sing-box" core with "xhttp" transport. Change core to "xray" or use other transports'
-      continue
-    fi
-    config[core]=$core
-    update_config_file
-    break
   done
 }
 
@@ -1960,7 +2379,7 @@ function config_server_menu {
       server="${defaults[server]}"
     fi
     config[server]="${server}"
-    if [[ ${config[security]} != 'reality' && ${config[transport]} != 'shadowtls' ]]; then
+    if [[ ${config[security]} != 'reality' ]]; then
       config[domain]="${server}"
     fi
     update_config_file
@@ -1978,39 +2397,12 @@ function config_transport_menu {
       "grpc" "$([[ "${config[transport]}" == 'grpc' ]] && echo 'on' || echo 'off')" \
       "ws" "$([[ "${config[transport]}" == 'ws' ]] && echo 'on' || echo 'off')" \
       "xhttp" "$([[ "${config[transport]}" == 'xhttp' ]] && echo 'on' || echo 'off')" \
-      "tuic" "$([[ "${config[transport]}" == 'tuic' ]] && echo 'on' || echo 'off')" \
-      "hysteria2" "$([[ "${config[transport]}" == 'hysteria2' ]] && echo 'on' || echo 'off')" \
-      "shadowtls" "$([[ "${config[transport]}" == 'shadowtls' ]] && echo 'on' || echo 'off')" \
       3>&1 1>&2 2>&3)
     if [[ $? -ne 0 ]]; then
       break
     fi
     if [[ ${transport} == 'ws' && ${config[security]} == 'reality' ]]; then
       message_box 'Invalid Configuration' 'You cannot use "ws" transport with "reality" TLS certificate. Use other transports or change TLS certifcate to "letsencrypt" or "selfsigned"'
-      continue
-    fi
-    if [[ ${transport} == 'tuic' && ${config[security]} == 'reality' ]]; then
-      message_box 'Invalid Configuration' 'You cannot use "tuic" transport with "reality" TLS certificate. Use other transports or change TLS certifcate to "letsencrypt" or "selfsigned"'
-      continue
-    fi
-    if [[ ${transport} == 'tuic' && ${config[core]} == 'xray' ]]; then
-      message_box 'Invalid Configuration' 'You cannot use "tuic" transport with "xray" core. Use other transports or change core to "sing-box"'
-      continue
-    fi
-    if [[ ${transport} == 'hysteria2' && ${config[security]} == 'reality' ]]; then
-      message_box 'Invalid Configuration' 'You cannot use "hysteria2" transport with "reality" TLS certificate. Use other transports or change TLS certifcate to "letsencrypt" or "selfsigned"'
-      continue
-    fi
-    if [[ ${transport} == 'hysteria2' && ${config[core]} == 'xray' ]]; then
-      message_box 'Invalid Configuration' 'You cannot use "hysteria2" transport with "xray" core. Use other transports or change core to "sing-box"'
-      continue
-    fi
-    if [[ ${transport} == 'shadowtls' && ${config[core]} == 'xray' ]]; then
-      message_box 'Invalid Configuration' 'You cannot use "shadowtls" transport with "xray" core. Use other transports or change core to "sing-box"'
-      continue
-    fi
-    if [[ ${transport} == 'xhttp' && ${config[core]} == 'sing-box' ]]; then
-      message_box 'Invalid Configuration' 'You cannot use "xhttp" transport with "sing-box" core. Change core to "xray" or use other transports'
       continue
     fi
     config[transport]=$transport
@@ -2059,14 +2451,6 @@ function config_security_menu {
       message_box 'Invalid Configuration' 'You cannot use "reality" TLS certificate with "ws" transport protocol. Change TLS certifcate to "letsencrypt" or "selfsigned" or use other transport protocols'
       continue
     fi
-    if [[ ${config[transport]} == 'tuic' && ${security} == 'reality' ]]; then
-      message_box 'Invalid Configuration' 'You cannot use "reality" TLS certificate with "tuic" transport. Change TLS certifcate to "letsencrypt" or "selfsigned" or use other transports'
-      continue
-    fi
-    if [[ ${config[transport]} == 'hysteria2' && ${security} == 'reality' ]]; then
-      message_box 'Invalid Configuration' 'You cannot use "reality" TLS certificate with "hysteria2" transport. Change TLS certifcate to "letsencrypt" or "selfsigned" or use other transports'
-      continue
-    fi
     if [[ ${security} == 'letsencrypt' && ${config[port]} -ne 443 ]]; then
       if lsof -i :80 >/dev/null 2>&1; then
         free_80=false
@@ -2082,10 +2466,10 @@ function config_security_menu {
         continue
       fi
     fi
-    if [[ ${security} != 'reality' && ${config[transport]} != 'shadowtls' ]]; then
+    if [[ ${security} != 'reality' ]]; then
       config[domain]="${config[server]}"
     fi
-    if [[ ${security} == 'reality' || ${config[transport]} == 'shadowtls' ]]; then
+    if [[ ${security} == 'reality' ]]; then
       config[domain]="${defaults[domain]}"
     fi
     config[security]="${security}"
@@ -2174,10 +2558,15 @@ function config_warp_menu {
     config[warp]=ON
     while true; do
       warp_license=$(whiptail --clear --backtitle "$BACKTITLE" --title "WARP+ License" \
-        --inputbox "Enter WARP+ License:" $HEIGHT $WIDTH "${config[warp_license]}" \
+        --inputbox "Enter WARP+ License (optional). Leave blank for free WARP:" $HEIGHT $WIDTH "${config[warp_license]}" \
         3>&1 1>&2 2>&3)
       if [[ $? -ne 0 ]]; then
-        break
+        return
+      fi
+      if [[ -z $warp_license ]]; then
+        config[warp_license]=""
+        update_config_file
+        return
       fi
       if [[ ! $warp_license =~ ${regex[warp_license]} ]]; then
         message_box "Invalid Input" "Invalid WARP+ License"
@@ -2202,10 +2591,12 @@ function config_warp_menu {
 function config_tgbot_menu {
   local tgbot
   local tgbot_token
-  local tgbot_admins
+  local tgbot_admin_ids
   local old_tgbot=${config[tgbot]}
   local old_tgbot_token=${config[tgbot_token]}
-  local old_tgbot_admins=${config[tgbot_admins]}
+  local old_tgbot_admin_ids=${config[tgbot_admin_ids]}
+  local old_api_token=${config[api_token]}
+  local old_helper_token=${config[helper_token]}
   while true; do
     tgbot=$(whiptail --clear --backtitle "$BACKTITLE" --title "Enable Telegram Bot" \
       --radiolist --noitem "Enable Telegram Bot:" $HEIGHT $WIDTH $CHOICE_HEIGHT \
@@ -2221,6 +2612,12 @@ function config_tgbot_menu {
       return
     fi
     config[tgbot]=ON
+    if [[ -z ${config[api_token]} ]]; then
+      config[api_token]=$(openssl rand -hex 24)
+    fi
+    if [[ -z ${config[helper_token]} ]]; then
+      config[helper_token]=$(openssl rand -hex 24)
+    fi
     while true; do
       tgbot_token=$(whiptail --clear --backtitle "$BACKTITLE" --title "Telegram Bot Token" \
         --inputbox "Enter Telegram Bot Token:" $HEIGHT $WIDTH "${config[tgbot_token]}" \
@@ -2238,17 +2635,17 @@ function config_tgbot_menu {
       fi
       config[tgbot_token]=$tgbot_token
       while true; do
-        tgbot_admins=$(whiptail --clear --backtitle "$BACKTITLE" --title "Telegram Bot Admins" \
-          --inputbox "Enter Telegram Bot Admins (Seperate multiple admins by comma ',' without leading '@'):" $HEIGHT $WIDTH "${config[tgbot_admins]}" \
+        tgbot_admin_ids=$(whiptail --clear --backtitle "$BACKTITLE" --title "Telegram Bot Admin IDs" \
+          --inputbox "Enter Telegram User IDs allowed to use the bot (comma-separated):" $HEIGHT $WIDTH "${config[tgbot_admin_ids]}" \
           3>&1 1>&2 2>&3)
         if [[ $? -ne 0 ]]; then
           break
         fi
-        if [[ ! $tgbot_admins =~ ${regex[tgbot_admins]} || $tgbot_admins =~ .+_$ || $tgbot_admins =~ .+_,.+ ]]; then
-          message_box "Invalid Input" "Invalid Username\nThe usernames must separated by ',' without leading '@' character or any extra space."
+        if [[ ! $tgbot_admin_ids =~ ${regex[tgbot_admin_ids]} ]]; then
+          message_box "Invalid Input" "Invalid Telegram user IDs format."
           continue
         fi
-        config[tgbot_admins]=$tgbot_admins
+        config[tgbot_admin_ids]=$tgbot_admin_ids
         update_config_file
         return
       done
@@ -2256,33 +2653,60 @@ function config_tgbot_menu {
   done
   config[tgbot]=$old_tgbot
   config[tgbot_token]=$old_tgbot_token
-  config[tgbot_admins]=$old_tgbot_admins
+  config[tgbot_admin_ids]=$old_tgbot_admin_ids
+  config[api_token]=$old_api_token
+  config[helper_token]=$old_helper_token
 }
 
 function backup_menu {
   local backup_password
   local result
+  local upload_temp=false
   backup_password=$(whiptail \
     --clear \
     --backtitle "$BACKTITLE" \
     --title "Backup" \
-    --inputbox "Choose a password for the backup file.\nLeave blank if you do not wish to set a password for the backup file." \
+    --inputbox "Choose a password for encrypted backup file." \
     $HEIGHT $WIDTH \
     3>&1 1>&2 2>&3)
   if [[ $? -ne 0 ]]; then
     return
   fi
-  if result=$(backup "${backup_password}" 2>&1); then
+  if [[ -z "${backup_password}" ]]; then
+    message_box "Backup Failed" "Backup password is required."
+    return
+  fi
+  if whiptail \
+    --clear \
+    --backtitle "$BACKTITLE" \
+    --title "Backup Upload" \
+    --yes-button "Upload" \
+    --no-button "Local only" \
+    --yesno "Upload encrypted backup to temp.sh? (recommended: Local only)" \
+    $HEIGHT $WIDTH \
+    3>&1 1>&2 2>&3; then
+    upload_temp=true
+  fi
+
+  if result=$(backup "${backup_password}" "${upload_temp}" 2>&1); then
     clear
-    echo "Backup has been create and uploaded successfully."
-    echo "You can download the backup file from here:"
+    if [[ "${upload_temp}" == true ]]; then
+      echo "Encrypted backup uploaded successfully."
+      echo "Download URL:"
+      echo ""
+      echo "${result}"
+      echo ""
+      echo "The URL is valid for 3 days."
+    else
+      echo "Encrypted backup created successfully."
+      echo "Local file:"
+      echo ""
+      echo "${result}"
+    fi
     echo ""
-    echo "${result}"
-    echo ""
-    echo "The URL is valid for 3 days."
     echo
     echo "Press Enter to return ..."
-    read
+    read -r
     clear
   else
     message_box "Backup Failed" "${result}"
@@ -2312,7 +2736,7 @@ function restore_backup_menu {
       --clear \
       --backtitle "$BACKTITLE" \
       --title "Restore Backup" \
-      --inputbox "Enter backup file password.\nLeave blank if there is no password." \
+      --inputbox "Enter backup file password." \
       $HEIGHT $WIDTH \
       3>&1 1>&2 2>&3)
     if [[ $? -ne 0 ]]; then
@@ -2334,13 +2758,11 @@ function restore_backup_menu {
 }
 
 function restart_docker_compose {
-  ${docker_cmd} --project-directory ${config_path} -p ${compose_project} down --remove-orphans --timeout 2 || true
-  ${docker_cmd} --project-directory ${config_path} -p ${compose_project} up --build -d --remove-orphans --build
+  ${docker_cmd} --project-directory ${config_path} -p ${compose_project} up -d --build --remove-orphans
 }
 
 function restart_tgbot_compose {
-  ${docker_cmd} --project-directory ${config_path}/tgbot -p ${tgbot_project} down --remove-orphans --timeout 2 || true
-  ${docker_cmd} --project-directory ${config_path}/tgbot -p ${tgbot_project} up --build -d --remove-orphans --build
+  ${docker_cmd} --project-directory ${config_path}/tgbot -p ${tgbot_project} up -d --build --remove-orphans
 }
 
 function restart_container {
@@ -2453,15 +2875,11 @@ function warp_delete_account {
   update_config_file
 }
 
-function warp_decode_reserved {
-  client_id=$1
-  reserved=$(echo "${client_id}" | base64 -d | xxd -p | fold -w2 | while read HEX; do printf '%d ' "0x${HEX}"; done | awk '{print "["$1", "$2", "$3"]"}')
-  echo "${reserved}"
-}
-
 function check_reload {
   declare -A restart
   generate_config
+  validate_engine_config
+  secure_file_permissions
   for key in "${!path[@]}"; do
     if [[ "${md5["$key"]}" != $(get_md5 "${path[$key]}") ]]; then
       restart["${service["$key"]}"]='true'
@@ -2503,6 +2921,59 @@ function get_md5 {
   md5sum "${file_path}" 2>/dev/null | cut -f1 -d' ' || true
 }
 
+function validate_engine_config {
+  local output
+  if [[ ! -r "${path[engine]}" ]]; then
+    echo "Engine config not found: ${path[engine]}" >&2
+    return 1
+  fi
+  if ! output=$(docker run --rm \
+    -v "${path[engine]}:/etc/xray/config.json:ro" \
+    "${image[xray]}" xray -test -c /etc/xray/config.json 2>&1); then
+    echo "Xray config validation failed:" >&2
+    echo "${output}" >&2
+    return 1
+  fi
+  return 0
+}
+
+function secure_file_permissions {
+  local file
+  local dir
+  local secret_files=(
+    "${config_path}/config"
+    "${config_path}/users"
+    "${config_path}/engine.conf"
+    "${config_path}/docker-compose.yml"
+    "${config_path}/tgbot/docker-compose.yml"
+    "${config_path}/tgbot/api/main.go"
+    "${config_path}/tgbot/bot/main.go"
+    "${config_path}/tgbot/helper/main.go"
+    "${config_path}/certificate/server.key"
+    "${config_path}/subscriptions.json"
+    "${config_path}/subscription-api/main.go"
+  )
+  local secret_dirs=(
+    "${config_path}"
+    "${config_path}/tgbot"
+    "${config_path}/tgbot/api"
+    "${config_path}/tgbot/bot"
+    "${config_path}/tgbot/helper"
+    "${config_path}/certificate"
+    "${config_path}/subscription-api"
+  )
+  for dir in "${secret_dirs[@]}"; do
+    if [[ -d "${dir}" ]]; then
+      chmod 700 "${dir}" 2>/dev/null || true
+    fi
+  done
+  for file in "${secret_files[@]}"; do
+    if [[ -f "${file}" ]]; then
+      chmod 600 "${file}" 2>/dev/null || true
+    fi
+  done
+}
+
 function generate_file_list {
   path[config]="${config_path}/config"
   path[users]="${config_path}/users"
@@ -2515,9 +2986,21 @@ function generate_file_list {
   path[server_pem]="${config_path}/certificate/server.pem"
   path[server_key]="${config_path}/certificate/server.key"
   path[server_crt]="${config_path}/certificate/server.crt"
-  path[tgbot_script]="${config_path}/tgbot/tgbot.py"
-  path[tgbot_dockerfile]="${config_path}/tgbot/Dockerfile"
+  path[tgbot_api_main]="${config_path}/tgbot/api/main.go"
+  path[tgbot_api_gomod]="${config_path}/tgbot/api/go.mod"
+  path[tgbot_api_dockerfile]="${config_path}/tgbot/api/Dockerfile"
+  path[tgbot_bot_main]="${config_path}/tgbot/bot/main.go"
+  path[tgbot_bot_gomod]="${config_path}/tgbot/bot/go.mod"
+  path[tgbot_bot_gosum]="${config_path}/tgbot/bot/go.sum"
+  path[tgbot_bot_dockerfile]="${config_path}/tgbot/bot/Dockerfile"
+  path[tgbot_helper_main]="${config_path}/tgbot/helper/main.go"
+  path[tgbot_helper_gomod]="${config_path}/tgbot/helper/go.mod"
+  path[tgbot_helper_dockerfile]="${config_path}/tgbot/helper/Dockerfile"
   path[tgbot_compose]="${config_path}/tgbot/docker-compose.yml"
+  path[subscriptions]="${config_path}/subscriptions.json"
+  path[subscription_api_main]="${config_path}/subscription-api/main.go"
+  path[subscription_api_gomod]="${config_path}/subscription-api/go.mod"
+  path[subscription_api_dockerfile]="${config_path}/subscription-api/Dockerfile"
 
   service[config]='none'
   service[users]='none'
@@ -2530,9 +3013,17 @@ function generate_file_list {
   service[server_pem]='haproxy'
   service[server_key]='engine'
   service[server_crt]='engine'
-  service[tgbot_script]='tgbot'
-  service[tgbot_dockerfile]='compose'
+  service[tgbot_api_main]='tgbot'
+  service[tgbot_api_dockerfile]='tgbot'
+  service[tgbot_bot_main]='tgbot'
+  service[tgbot_bot_dockerfile]='tgbot'
+  service[tgbot_helper_main]='tgbot'
+  service[tgbot_helper_dockerfile]='tgbot'
   service[tgbot_compose]='tgbot'
+  service[subscriptions]='none'
+  service[subscription_api_main]='subscription-api'
+  service[subscription_api_gomod]='subscription-api'
+  service[subscription_api_dockerfile]='subscription-api'
 
   for key in "${!path[@]}"; do
     md5["$key"]=$(get_md5 "${path[$key]}")
@@ -2540,18 +3031,40 @@ function generate_file_list {
 }
 
 function tune_kernel {
+  local mem_kb
+  local file_max
+  local somaxconn
+  local syn_backlog
+  local conntrack_max
+  mem_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)
+  if (( mem_kb < 1048576 )); then
+    file_max=100000
+    somaxconn=2048
+    syn_backlog=4096
+    conntrack_max=262144
+  elif (( mem_kb < 4194304 )); then
+    file_max=200000
+    somaxconn=4096
+    syn_backlog=8192
+    conntrack_max=524288
+  else
+    file_max=400000
+    somaxconn=8192
+    syn_backlog=16384
+    conntrack_max=1048576
+  fi
   cat >/etc/sysctl.d/99-reality-ezpz.conf <<EOF
-fs.file-max = 200000
+fs.file-max = ${file_max}
 net.core.rmem_max = 67108864
 net.core.wmem_max = 67108864
 net.core.netdev_max_backlog = 250000
-net.core.somaxconn = 4096
+net.core.somaxconn = ${somaxconn}
 net.ipv4.tcp_syncookies = 1
 net.ipv4.tcp_tw_reuse = 1
 net.ipv4.tcp_fin_timeout = 10
 net.ipv4.tcp_keepalive_time = 600
 net.ipv4.ip_local_port_range = 10000 65000
-net.ipv4.tcp_max_syn_backlog = 8192
+net.ipv4.tcp_max_syn_backlog = ${syn_backlog}
 net.ipv4.tcp_max_tw_buckets = 5000
 net.ipv4.tcp_fastopen = 3
 net.ipv4.tcp_mem = 25600 51200 102400
@@ -2560,7 +3073,7 @@ net.ipv4.tcp_wmem = 4096 65536 67108864
 net.ipv4.tcp_mtu_probing = 1
 net.core.default_qdisc=fq
 net.ipv4.tcp_congestion_control=bbr
-net.netfilter.nf_conntrack_max=1000000
+net.netfilter.nf_conntrack_max=${conntrack_max}
 EOF
   sysctl -qp /etc/sysctl.d/99-reality-ezpz.conf >/dev/null 2>&1 || true
 }
@@ -2597,35 +3110,43 @@ if [[ $EUID -ne 0 ]]; then
     echo "This script must be run as root."
     exit 1
 fi
+generate_file_list
+install_packages
 if [[ ${args[backup]} == true ]]; then
-  if [[ -n ${args[backup_password]} ]]; then
-    backup_url=$(backup "${args[backup_password]}")
-  else
-    backup_url=$(backup)
+  if [[ -z ${args[backup_password]} ]]; then
+    echo "Backup password is required with --backup-password." >&2
+    exit 1
   fi
-  if [[ $? -eq 0 ]]; then
-    echo "Backup created successfully. You can download the backup file from this address:"
-    echo "${backup_url}"
-    echo "The URL is valid for 3 days."
+  backup_upload=false
+  if [[ ${args[backup_upload_temp]} == true ]]; then
+    backup_upload=true
+  fi
+  if backup_result=$(backup "${args[backup_password]}" "${backup_upload}"); then
+    if [[ "${backup_upload}" == true ]]; then
+      echo "Encrypted backup uploaded successfully."
+      echo "${backup_result}"
+      echo "The URL is valid for 3 days."
+    else
+      echo "Encrypted backup created successfully at:"
+      echo "${backup_result}"
+    fi
     exit 0
   fi
+  exit 1
 fi
 if [[ -n ${args[restore]} ]]; then
-  if [[ -n ${args[backup_password]} ]]; then
-    restore "${args[restore]}" "${args[backup_password]}"
-  else
-    restore "${args[restore]}"
+  if [[ -z ${args[backup_password]} ]]; then
+    echo "Backup password is required with --backup-password." >&2
+    exit 1
   fi
-  if [[ $? -eq 0 ]]; then
+  if restore "${args[restore]}" "${args[backup_password]}"; then
     args[restart]=true
     echo "Backup has been restored successfully."
   fi
   echo "Press Enter to continue ..."
-  read
+  read -r
   clear
 fi
-generate_file_list
-install_packages
 install_docker
 configure_docker
 upgrade
@@ -2657,6 +3178,40 @@ if [[ ${args[server-config]} == true ]]; then
   show_server_config
   exit 0
 fi
+if [[ -n ${args[show_subscription]} ]]; then
+  username="${args[show_subscription]}"
+  if [[ -z "${users["${username}"]}" ]]; then
+    echo "User \"${username}\" does not exist."
+    exit 1
+  fi
+  if [[ ${config[subscriptions]} != 'ON' ]]; then
+    echo "Subscription feature is disabled. Enable with --enable-subscriptions true"
+    exit 1
+  fi
+  show_subscription_url "${username}"
+  exit 0
+fi
+if [[ -n ${args[rotate_subscription]} ]]; then
+  username="${args[rotate_subscription]}"
+  if [[ -z "${users["${username}"]}" ]]; then
+    echo "User \"${username}\" does not exist."
+    exit 1
+  fi
+  if [[ ${config[subscriptions]} != 'ON' ]]; then
+    echo "Subscription feature is disabled. Enable with --enable-subscriptions true"
+    exit 1
+  fi
+  new_token=$(rotate_subscription_token "${username}")
+  _sub_path="${config[subscription_path]:-sub}"
+  _host="${config[server]}"
+  _port="${config[port]}"
+  if [[ "${_port}" != "443" ]]; then
+    _host="${_host}:${_port}"
+  fi
+  echo "New subscription URL for ${username}:"
+  echo "https://${_host}/${_sub_path}/${new_token}"
+  exit 0
+fi
 if [[ -n ${args[list_users]} ]]; then
   for user in "${!users[@]}"; do
     echo "${user}"
@@ -2664,12 +3219,14 @@ if [[ -n ${args[list_users]} ]]; then
   exit 0
 fi
 if [[ ${#users[@]} -eq 1 ]]; then
-  username="${!users[@]}"
+  for user in "${!users[@]}"; do
+    username="${user}"
+  done
 fi
 if [[ -n ${args[show_config]} ]]; then
   username="${args[show_config]}"
   if [[ -z "${users["${username}"]}" ]]; then
-    echo 'User "'"$username"'" does not exists.'
+    echo "User \"${username}\" does not exist."
     exit 1
   fi
 fi
